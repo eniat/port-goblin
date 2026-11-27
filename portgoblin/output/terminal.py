@@ -14,10 +14,11 @@ from rich.progress import BarColumn, Progress, TaskID, TextColumn, TimeElapsedCo
 from rich.table import Table
 
 from portgoblin import TAGLINE, __version__
+from portgoblin.analysis.quick_wins import Sections, sections
 from portgoblin.analysis.services import group_services, open_filtered_udp
 from portgoblin.core import nmap_runner as nr
 from portgoblin.core.engine import RunState, state_summary
-from portgoblin.core.models import Host, Report, Status
+from portgoblin.core.models import Finding, Host, Report, Status
 from portgoblin.core.preflight import PreflightPlan, ToolStatus, format_duration, timing_label
 
 PORT_LIST_LIMIT = 12
@@ -31,6 +32,15 @@ def make_console(no_color: bool = False) -> Console:
 
 def plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
+
+
+def host_count_label(entries: list[str]) -> str:
+    """'14 hosts', or '1 host, 2 services' when one host has several affected ports."""
+    addresses = {entry.split(":", 1)[0] for entry in entries}
+    label = plural(len(addresses), "host")
+    if len(entries) != len(addresses):
+        label += f", {plural(len(entries), 'service')}"
+    return label
 
 
 def banner(console: Console) -> None:
@@ -97,6 +107,37 @@ def render_preflight(
         console.print(f"[yellow]Check scope:[/yellow] {escape(warning)}")
     if plan.warnings:
         console.print()
+
+
+def render_import_preflight(console: Console, plan, tools: list[ToolStatus], root: bool) -> None:
+    """What the follow-up checks for an import will contact, before any traffic."""
+    hosts = [host.address for host, _ in plan]
+    names: list[str] = []
+    for _, matched in plan:
+        for check, _ports in matched:
+            if check.name not in names:
+                names.append(check.name)
+    udp = any(check.protocol == "udp" for _, matched in plan for check, _ in matched)
+    table = _kv_table()
+    table.columns[1].overflow = "fold"
+    shown = ", ".join(hosts[:20]) + (f" (+{len(hosts) - 20} more)" if len(hosts) > 20 else "")
+    table.add_row("Hosts", f"{plural(len(hosts), 'host')}: {shown}")
+    table.add_row("Checks", ", ".join(names))
+    table.add_row(
+        "Traffic",
+        "TCP connect to up to 5 hosts, then read-only checks, one attempt per service, "
+        "one host at a time",
+    )
+    if udp and not root:
+        table.add_row("UDP checks", "Not run: they need root (sudo)")
+    missing = [t for t in tools if not t.found and t.name in ("netexec", "smbclient")]
+    if missing:
+        table.add_row("Missing tools", ", ".join(f"{t.name} ({t.install})" for t in missing))
+    console.print(
+        Panel(
+            table, title="Follow-up checks for imported hosts", title_align="left", box=box.ROUNDED
+        )
+    )
 
 
 class RichReporter:
@@ -268,31 +309,136 @@ def _services(console: Console, report: Report) -> None:
     console.print()
 
 
-def _not_assessed(console: Console, report: Report) -> None:
-    items = [f for f in report.findings if f.status is Status.NOT_ASSESSED]
+STATUS_TAGS = {
+    Status.ISSUE: "[bold red]ISSUE[/bold red]",
+    Status.MANUAL_CHECK: "[bold yellow]CHECK[/bold yellow]",
+    Status.OBSERVATION: "[bold cyan]NOTE[/bold cyan]",
+    Status.OK: "[green]OK[/green]",
+}
+LINE_LIMIT = 5
+
+
+def _limited(items: list[str], verbose: bool, limit: int = LINE_LIMIT) -> list[str]:
+    if verbose or len(items) <= limit:
+        return items
+    return items[:limit] + [f"(+{len(items) - limit} more, --verbose shows all)"]
+
+
+def _finding_block(console: Console, finding: Finding, verbose: bool) -> None:
+    hosts_label = host_count_label(finding.hosts)
+    console.print(
+        f"  {STATUS_TAGS.get(finding.status, '')}  {escape(finding.finding_id)}  "
+        f"{escape(finding.title)} ({hosts_label})"
+    )
+    table = Table(box=None, show_header=False, padding=(0, 2, 0, 4))
+    table.add_column(style="bold", no_wrap=True)
+    table.add_column(overflow="fold")
+    table.add_row("Hosts", escape(", ".join(finding.hosts)))
+    if finding.observed:
+        lines = _limited(finding.observed.splitlines(), verbose)
+        table.add_row("Observed", escape("\n".join(lines)))
+    table.add_row("Why", escape(finding.why_it_matters))
+    if finding.remediation:
+        table.add_row("Fix", escape(finding.remediation))
+    if finding.reproduce:
+        table.add_row("Reproduce", escape("\n".join(_limited(finding.reproduce, verbose, 2))))
+    if finding.manual_steps:
+        table.add_row("Manual", escape("\n".join(finding.manual_steps)))
+    if finding.references and verbose:
+        table.add_row("References", escape("\n".join(finding.references)))
+    console.print(table)
+    console.print()
+
+
+def _quick_wins(console: Console, parts: Sections, verbose: bool) -> None:
+    console.print(
+        f"[bold]Quick wins[/bold]   {plural(parts.issue_count, 'issue')} | "
+        f"{plural(parts.manual_count, 'manual check')}"
+    )
+    console.print()
+    for finding in parts.quick_wins:
+        _finding_block(console, finding, verbose)
+
+
+def _observations(console: Console, parts: Sections, verbose: bool) -> None:
+    if not parts.observations:
+        return
+    console.print(f"[bold]Observations[/bold]   {len(parts.observations)}")
+    console.print()
+    for finding in parts.observations:
+        _finding_block(console, finding, verbose)
+
+
+def _passed(console: Console, parts: Sections) -> None:
+    if not parts.passed:
+        return
+    console.print("[bold]Passed checks[/bold]")
+    table = _kv_table()
+    for finding in parts.passed:
+        table.add_row(
+            f"{escape(finding.finding_id)} {escape(finding.title)}",
+            host_count_label(finding.hosts),
+        )
+    console.print(table)
+    console.print()
+
+
+def _not_assessed(console: Console, report: Report, parts: Sections, verbose: bool) -> None:
     errors = report.scan.parse_errors
-    if not items and not errors:
+    if not parts.not_assessed and not errors:
         return
     console.print("[bold]Not assessed[/bold]")
     table = _kv_table()
-    for finding in items:
-        table.add_row(escape(finding.title), escape(finding.observed or ""))
+    table.columns[1].overflow = "fold"
+    for finding in parts.not_assessed:
+        reasons = (finding.observed or "").splitlines()
+        hosts = f" ({host_count_label(finding.hosts)})" if finding.hosts else ""
+        table.add_row(
+            escape(finding.title + hosts),
+            escape("\n".join(_limited(reasons, verbose))),
+        )
     for error in errors:
         table.add_row("nmap output", escape(f"Not assessed: {error}"))
     console.print(table)
     console.print()
 
 
+def _check_log(console: Console, report: Report) -> None:
+    if not report.check_log:
+        return
+    table = Table(
+        title="Check log (what was sent)",
+        title_justify="left",
+        box=box.SIMPLE_HEAD,
+        title_style="bold",
+    )
+    for column in ("Target", "Check", "Sent", "Result"):
+        table.add_column(column, overflow="fold")
+    for record in report.check_log:
+        table.add_row(
+            escape(record.target), escape(record.check), escape(record.sent), escape(record.result)
+        )
+    console.print(table)
+    console.print()
+
+
 def render_report(console: Console, report: Report, verbose: bool = False) -> None:
+    parts = sections(report.findings)
     banner(console)
     _summary(console, report)
+    if report.checks_run:
+        _quick_wins(console, parts, verbose)
+    _observations(console, parts, verbose)
     _hosts_table(console, report)
     if verbose:
         for host in report.scan.live_hosts():
             _host_detail(console, host)
     console.print()
     _services(console, report)
-    _not_assessed(console, report)
+    _passed(console, parts)
+    _not_assessed(console, report, parts, verbose)
+    if verbose:
+        _check_log(console, report)
 
 
 def report_text(report: Report, verbose: bool = False, width: int = 120) -> str:

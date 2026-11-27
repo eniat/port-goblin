@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from xml.etree.ElementTree import Element
 
@@ -49,7 +50,26 @@ def _service(el: Element | None) -> Service | None:
     )
 
 
-def _port(el: Element) -> Port | None:
+def default_scripts_ran(args: str | None) -> bool:
+    """Whether an nmap command line ran the default scripts (-sC, -A or --script default)."""
+    if not args:
+        return False
+    tokens = args.split()
+    if "-sC" in tokens or "-A" in tokens:
+        return True
+    for flag in ("--script", "-script"):
+        for index, token in enumerate(tokens):
+            value = None
+            if token == flag and index + 1 < len(tokens):
+                value = tokens[index + 1]
+            elif token.startswith(flag + "="):
+                value = token.split("=", 1)[1]
+            if value and re.search(r"(^|[\s,\"'(])default($|[\s,\"')])", value):
+                return True
+    return False
+
+
+def _port(el: Element, default_scripts: bool = False) -> Port | None:
     portid = _int(el.get("portid"))
     protocol = el.get("protocol")
     state_el = el.find("state")
@@ -62,10 +82,11 @@ def _port(el: Element) -> Port | None:
         reason=state_el.get("reason"),
         service=_service(el.find("service")),
         scripts=_scripts(el),
+        default_scripts=default_scripts,
     )
 
 
-def _host(el: Element) -> Host | None:
+def _host(el: Element, default_scripts: bool = False) -> Host | None:
     address = None
     mac = None
     for addr in el.findall("address"):
@@ -87,7 +108,9 @@ def _host(el: Element) -> Host | None:
             user_hostnames.append(name)
         if name not in hostnames:
             hostnames.append(name)
-    ports = [p for p in (_port(port_el) for port_el in el.findall("ports/port")) if p]
+    ports = [
+        p for p in (_port(port_el, default_scripts) for port_el in el.findall("ports/port")) if p
+    ]
     return Host(
         address=address,
         status=status_el.get("state", "unknown") if status_el is not None else "unknown",
@@ -136,8 +159,9 @@ def parse_xml_text(text: str, source: str = "<string>", tolerant: bool = False) 
     version = root.get("version")
     if version:
         result.nmap_versions.append(version)
+    default_scripts = default_scripts_ran(root.get("args"))
     for host_el in root.findall("host"):
-        host = _host(host_el)
+        host = _host(host_el, default_scripts)
         if host is None:
             continue
         if host.address in result.hosts:

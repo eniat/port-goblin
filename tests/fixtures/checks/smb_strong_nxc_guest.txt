@@ -1,0 +1,2 @@
+SMB                      127.0.0.1       445    VM               [*] Unix - Samba (name:VM) (domain:VM) (signing:True) (SMBv1:False) (Null Auth:True)
+SMB                      127.0.0.1       445    VM               [-] VM\guest: STATUS_LOGON_FAILURE 

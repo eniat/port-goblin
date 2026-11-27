@@ -85,8 +85,10 @@ def netexec_info(path: str) -> tuple[str | None, bool]:
     netexec builds that offer --file-write-check only create files when that flag is
     passed. Older builds created a directory on every share, so they are not used.
     """
-    version_out = _run_text([path, "--version"])
-    version = version_out.strip().splitlines()[0] if version_out and version_out.strip() else None
+    version_out = _run_text([path, "--version"]) or ""
+    # The first run of netexec prints a set-up line before the version, so find the version.
+    match = re.search(r"^\s*(\d+\.\d+[^\n]*)$", version_out, re.MULTILINE)
+    version = match.group(1).strip() if match else None
     help_out = _run_text([path, "smb", "--help"]) or ""
     return version, "--file-write-check" in help_out
 
@@ -265,10 +267,11 @@ def tcp_connect(host: str, port: int, timeout: float) -> bool:
 def check_reachability(
     result: ScanResult,
     timeout: float,
-    connect: Callable[[str, int, float], bool] = tcp_connect,
+    connect: Callable[[str, int, float], bool] | None = None,
     limit: int = 5,
 ) -> tuple[bool, list[tuple[str, int, bool]]]:
     """TCP connect to up to `limit` imported hosts. True if any answered."""
+    connect = connect or tcp_connect
     attempts = [(h, p, connect(h, p, timeout)) for h, p in reachability_targets(result, limit)]
     return any(ok for _, _, ok in attempts), attempts
 

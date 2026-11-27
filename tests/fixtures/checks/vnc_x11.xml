@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:54:10 2026 as: nmap -Pn -sV -&#45;script vnc-info,x11-access -p 5900,5901,6001,6002 -T3 -oX vnc_x11.xml 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sV -&#45;script vnc-info,x11-access -p 5900,5901,6001,6002 -T3 -oX vnc_x11.xml 127.0.0.1" start="1795784050" startstr="Fri Nov 27 12:54:10 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="4" services="5900-5901,6001-6002"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795784050" endtime="1795784056"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="5900"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="vnc" product="VNC" extrainfo="protocol 3.8" method="probed" conf="10"/><script id="vnc-info" output="&#xa;  Protocol version: 3.8&#xa;  Security types: &#xa;    None (1)&#xa;  WARNING: Server does not require authentication"><elem key="Protocol version">3.8</elem>
+<table key="Security types">
+<table>
+<elem key="name">None</elem>
+<elem key="type">1</elem>
+</table>
+</table>
+<elem key="WARNING">Server does not require authentication</elem>
+</script></port>
+<port protocol="tcp" portid="5901"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="vnc" product="VNC" extrainfo="protocol 3.8" method="probed" conf="10"/><script id="vnc-info" output="&#xa;  Protocol version: 3.8&#xa;  Security types: &#xa;    VNC Authentication (2)"><elem key="Protocol version">3.8</elem>
+<table key="Security types">
+<table>
+<elem key="name">VNC Authentication</elem>
+<elem key="type">2</elem>
+</table>
+</table>
+</script></port>
+<port protocol="tcp" portid="6001"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="X11" product="X.Org" extrainfo="open" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:x:x.org_x11</cpe></service></port>
+<port protocol="tcp" portid="6002"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="X11" product="X.Org" extrainfo="open" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:x:x.org_x11</cpe></service></port>
+</ports>
+<times srtt="45" rttvar="2140" to="100000"/>
+</host>
+<runstats><finished time="1795784056" timestr="Fri Nov 27 12:54:16 2026" summary="Nmap done at Fri Nov 27 12:54:16 2026; 1 IP address (1 host up) scanned in 6.50 seconds" elapsed="6.50" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

@@ -1,0 +1,3 @@
+SMB                      127.0.0.1       445    VM               [*] Unix - Samba (name:VM) (domain:VM) (signing:False) (SMBv1:True) (Null Auth:True)
+SMB                      127.0.0.1       445    VM               [+] VM\guest: (Guest)
+SMB                      127.0.0.1       445    VM               [-] Error enumerating shares: STATUS_ACCESS_DENIED

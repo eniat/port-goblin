@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:45:01 2026 as: nmap -Pn -sV -&#45;script ftp-anon -p 21 -T3 -oX ftp_anon.xml 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sV -&#45;script ftp-anon -p 21 -T3 -oX ftp_anon.xml 127.0.0.1" start="1795783501" startstr="Fri Nov 27 12:45:01 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="1" services="21"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795783501" endtime="1795783501"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ftp" product="vsftpd" version="3.0.5" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:3.0.5</cpe></service><script id="ftp-anon" output="Anonymous FTP login allowed (FTP code 230)&#xa;-rw-r-&#45;r-&#45;    1 0        0               0 Nov 27 12:45 backup.zip&#xa;drwxr-xr-x    2 0        0            4096 Nov 27 12:45 pub&#xa;-rw-r-&#45;r-&#45;    1 0        0               0 Nov 27 12:45 readme.txt"/></port>
+</ports>
+<times srtt="67" rttvar="5000" to="100000"/>
+</host>
+<runstats><finished time="1795783501" timestr="Fri Nov 27 12:45:01 2026" summary="Nmap done at Fri Nov 27 12:45:01 2026; 1 IP address (1 host up) scanned in 0.23 seconds" elapsed="0.23" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

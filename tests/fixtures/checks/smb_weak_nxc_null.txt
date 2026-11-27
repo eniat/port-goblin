@@ -1,0 +1,8 @@
+SMB                      127.0.0.1       445    VM               [*] Unix - Samba (name:VM) (domain:VM) (signing:False) (SMBv1:True) (Null Auth:True)
+SMB                      127.0.0.1       445    VM               [+] VM\: 
+SMB                      127.0.0.1       445    VM               [*] Enumerated shares
+SMB                      127.0.0.1       445    VM               Share           Permissions     Type       Remark
+SMB                      127.0.0.1       445    VM               -----           -----------     ----       ------
+SMB                      127.0.0.1       445    VM               public          READ            DISKTREE   Public files
+SMB                      127.0.0.1       445    VM               finance                         DISKTREE   Finance
+SMB                      127.0.0.1       445    VM               IPC$                            IPC        IPC Service (Samba 4.19.5-Ubuntu)

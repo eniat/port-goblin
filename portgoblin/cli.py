@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -12,9 +13,25 @@ from rich.markup import escape
 
 from portgoblin import TAGLINE, __version__
 from portgoblin.core import preflight
-from portgoblin.core.config import Config, ConfigError, cache_dir, load_config, runs_dir
-from portgoblin.core.engine import Engine, Mode, RunNotFoundError, ScanOptions, list_runs
-from portgoblin.core.models import Finding, Report, ScanResult, Status
+from portgoblin.core.config import (
+    Config,
+    ConfigError,
+    cache_dir,
+    data_dir,
+    load_config,
+    runs_dir,
+)
+from portgoblin.core.engine import (
+    Engine,
+    Mode,
+    RunNotFoundError,
+    RunStatus,
+    ScanOptions,
+    list_runs,
+    new_run_id,
+)
+from portgoblin.core.followup import FollowUpContext, FollowUps
+from portgoblin.core.models import CheckRecord, Finding, Report, ScanResult, Status
 from portgoblin.core.nmap_parser import parse_many
 from portgoblin.core.nmap_runner import NmapError, NmapRunner, find_script_db, parse_script_db
 from portgoblin.core.targets import TargetError, build_target_set, read_target_file, split_specs
@@ -90,21 +107,9 @@ def _check_save_path(console: Console, save: Path | None, assume_yes: bool) -> N
             raise _fail(console, "Not overwriting. Choose another --save path.", 2)
 
 
-def _phase_one_gaps(checks: bool) -> list[Finding]:
+def _build_gaps() -> list[Finding]:
     """Parts of the tool that are not built yet are reported, never implied."""
-    findings = []
-    if checks:
-        findings.append(
-            Finding(
-                finding_id="BUILD-001",
-                check="follow-up",
-                title="Follow-up checks",
-                status=Status.NOT_ASSESSED,
-                observed="Not assessed: not built yet (build phase 2)",
-                why_it_matters="Quick wins come from these checks.",
-            )
-        )
-    findings.append(
+    return [
         Finding(
             finding_id="BUILD-002",
             check="intelligence",
@@ -113,12 +118,35 @@ def _phase_one_gaps(checks: bool) -> list[Finding]:
             observed="Not assessed: not built yet (build phase 3)",
             why_it_matters="CVE, KEV, EPSS, Exploit-DB and Metasploit lookups come from this.",
         )
+    ]
+
+
+def load_script_db() -> dict[str, set[str]]:
+    path = find_script_db()
+    if path is None:
+        return {}
+    return parse_script_db(path.read_text(encoding="utf-8", errors="replace"))
+
+
+def make_followups(config: Config, workdir: Path, reporter, is_root: bool) -> FollowUps:
+    return FollowUps(
+        config,
+        NmapRunner(config.scan.interrupt_grace_seconds),
+        workdir,
+        load_script_db(),
+        FollowUpContext(config, is_root),
+        reporter,
     )
-    return findings
 
 
-def _scan_report(engine: Engine, result: ScanResult, interrupted: bool) -> Report:
+def _scan_report(
+    engine: Engine,
+    result: ScanResult,
+    interrupted: bool,
+    followups: FollowUps | None = None,
+) -> Report:
     state = engine.state
+    findings = _build_gaps() + (followups.findings if followups else [])
     return Report(
         source="scan",
         mode=state.options.mode.value,
@@ -128,12 +156,14 @@ def _scan_report(engine: Engine, result: ScanResult, interrupted: bool) -> Repor
         excluded_count=state.excluded_count,
         scan=result,
         hostnames=state.hostnames,
-        findings=_phase_one_gaps(state.options.checks),
+        findings=findings,
         duration_seconds=state.elapsed_seconds,
         interrupted=interrupted,
         run_id=state.run_id,
         tcp_scanned=state.options.tcp,
         udp_scanned=state.options.udp,
+        checks_run=followups is not None,
+        check_log=followups.ctx.records if followups else [],
     )
 
 
@@ -149,26 +179,34 @@ def _output(console: Console, report: Report, save: Path | None, verbose: bool) 
 
 
 def _execute(console: Console, engine: Engine, save: Path | None, verbose: bool) -> None:
+    followups: FollowUps | None = None
     try:
         with terminal.RichReporter(console) as reporter:
             engine.reporter = reporter
             result = asyncio.run(engine.run())
+            if engine.state.options.checks:
+                followups = make_followups(
+                    engine.config, engine.workdir / "checks", reporter, preflight.is_root()
+                )
+                asyncio.run(followups.run(result))
     except KeyboardInterrupt:
-        console.print("\n[yellow]Interrupted. nmap stopped.[/yellow]")
-        report = _scan_report(engine, engine.collect(tolerant=True), interrupted=True)
+        console.print("\n[yellow]Interrupted. Running processes stopped.[/yellow]")
+        engine.state.status = RunStatus.INTERRUPTED
+        engine.save_state()
+        report = _scan_report(engine, engine.collect(tolerant=True), True, followups)
         _output(console, report, save, verbose)
         console.print(f"Working directory kept: {escape(str(engine.workdir))}")
         console.print(f"Resume with: portgoblin resume {engine.state.run_id}")
         raise typer.Exit(EXIT_INTERRUPTED) from None
     except NmapError as exc:
         console.print(f"[red]Scan stopped:[/red] {escape(str(exc))}")
-        report = _scan_report(engine, engine.collect(tolerant=True), interrupted=True)
+        report = _scan_report(engine, engine.collect(tolerant=True), True, followups)
         _output(console, report, save, verbose)
         console.print(f"Working directory kept: {escape(str(engine.workdir))}")
         console.print(f"Resume with: portgoblin resume {engine.state.run_id}")
         raise typer.Exit(1) from None
 
-    report = _scan_report(engine, result, interrupted=False)
+    report = _scan_report(engine, result, False, followups)
     _output(console, report, save, verbose)
     if engine.state.keep_raw:
         copied = engine.keep_raw_files(Path(engine.state.keep_raw))
@@ -236,7 +274,7 @@ def scan(
     )
     tools = preflight.detect_tools()
     plan = preflight.build_plan(target_set, options, tools, config.scan.udp_parallel)
-    checks = "No (--no-checks)" if no_checks else "Not available yet (build phase 2)"
+    checks = "No (--no-checks)" if no_checks else "Yes (read-only, one attempt per service)"
     terminal.banner(console)
     terminal.render_preflight(console, plan, checks, str(save) if save else None)
     if not any(t.name == "nmap" and t.found for t in tools):
@@ -308,15 +346,77 @@ def import_(
         for error in result.parse_errors:
             console.print(f"[red]Not assessed:[/red] {escape(error)}")
         raise typer.Exit(1)
+    findings = _build_gaps()
+    followups: FollowUps | None = None
+    if not no_checks:
+        followups = _import_checks(console, result, yes, findings)
     report = Report(
         source="import",
         imported_files=[str(f) for f in files],
         scan=result,
-        findings=_phase_one_gaps(not no_checks),
+        findings=findings + (followups.findings if followups else []),
         tcp_scanned=any(p.protocol == "tcp" for h in result.hosts.values() for p in h.ports),
         udp_scanned=any(p.protocol == "udp" for h in result.hosts.values() for p in h.ports),
+        checks_run=followups is not None,
+        check_log=followups.ctx.records if followups else [],
     )
     _output(console, report, save, verbose)
+    if followups and followups.interrupted:
+        raise typer.Exit(EXIT_INTERRUPTED)
+
+
+def _import_checks(
+    console: Console, result: ScanResult, yes: bool, findings: list[Finding]
+) -> FollowUps | None:
+    """Follow-up checks for imported hosts, after a prompt: they send traffic."""
+    config, _ = _load_config(console)
+    workdir = data_dir() / "imports" / new_run_id()
+    followups = make_followups(config, workdir, None, preflight.is_root())
+    plan = followups.plan(result)
+    if not plan:
+        console.print("No imported service matches a follow-up check.")
+        return None
+    terminal.banner(console)
+    terminal.render_import_preflight(console, plan, preflight.detect_tools(), preflight.is_root())
+    if not preflight.confirm(yes, console.input):
+        console.print("Follow-up checks skipped. No traffic was sent.")
+        findings.append(_not_assessed_checks("Not assessed: skipped at the Proceed? prompt"))
+        return None
+    reachable, attempts = preflight.check_reachability(result, config.timeouts.reachability)
+    for host, port, ok in attempts:
+        followups.ctx.record(
+            CheckRecord(
+                target=f"{host}:{port}",
+                check="reachability",
+                sent="TCP connect",
+                result="connected" if ok else "no connection",
+            )
+        )
+    if attempts and not reachable:
+        findings.append(_not_assessed_checks(preflight.NOT_REACHABLE, [h for h, _, _ in attempts]))
+        return followups
+    try:
+        with terminal.RichReporter(console) as reporter:
+            followups.reporter = reporter
+            asyncio.run(followups.run(result))
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted. Results so far:[/yellow]")
+        followups.interrupted = True
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+    return followups
+
+
+def _not_assessed_checks(reason: str, hosts: list[str] | None = None) -> Finding:
+    return Finding(
+        finding_id="NA-follow-up",
+        check="follow-up",
+        title="Follow-up checks",
+        status=Status.NOT_ASSESSED,
+        hosts=hosts or [],
+        observed=reason,
+        why_it_matters="No follow-up checks ran, so quick wins are not assessed.",
+    )
 
 
 @app.command()

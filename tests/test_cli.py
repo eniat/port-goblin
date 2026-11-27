@@ -188,3 +188,51 @@ def test_doctor_runs(monkeypatch):
     result = runner.invoke(cli.app, ["doctor", "--no-color"])
     assert result.exit_code == 0
     assert "nmap" in result.output and "Running as root" in result.output
+
+
+class NoTraffic:
+    def __init__(self, calls):
+        self.calls = calls
+
+    async def run(self, cmd, on_line=None):
+        self.calls.append(cmd)
+        raise AssertionError("no checks should run")
+
+
+def test_import_checks_need_confirmation(monkeypatch):
+    calls = []
+    monkeypatch.setattr(cli, "NmapRunner", lambda *a, **k: NoTraffic(calls))
+    monkeypatch.setattr(preflight, "tcp_connect", lambda *a: calls.append(a) or True)
+    result = runner.invoke(
+        cli.app, ["import", str(NMAP_FIXTURES / "services_mixed.xml"), "--no-color"], input="n\n"
+    )
+    assert result.exit_code == 0
+    out = plain(result.output)
+    assert "Follow-up checks for imported hosts" in out and "10.0.0.20" in out
+    assert "No traffic was sent" in out and "skipped at the Proceed? prompt" in out
+    assert calls == []
+
+
+def test_import_unreachable_hosts_skip_checks(monkeypatch):
+    nmap_calls = []
+
+    class Recorder:
+        async def run(self, cmd, on_line=None):
+            nmap_calls.append(cmd)
+            raise AssertionError("no checks should run")
+
+    monkeypatch.setattr(cli, "NmapRunner", lambda *a, **k: Recorder())
+    monkeypatch.setattr(preflight, "tcp_connect", lambda host, port, timeout: False)
+    result = runner.invoke(
+        cli.app, ["import", str(NMAP_FIXTURES / "services_mixed.xml"), "--yes", "--no-color"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "hosts not reachable from this machine" in plain(result.output)
+    assert nmap_calls == []
+
+
+def test_scan_preflight_says_checks_will_run(as_root, no_engine):
+    result = runner.invoke(cli.app, ["scan", "10.0.0.1", "--internal"], input="n\n")
+    assert "Follow-up checks Yes (read-only" in plain(result.output)
+    result = runner.invoke(cli.app, ["scan", "10.0.0.1", "--internal", "--no-checks"], input="n\n")
+    assert "Follow-up checks No (--no-checks)" in plain(result.output)

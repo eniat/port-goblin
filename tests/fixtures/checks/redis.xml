@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:52:38 2026 as: nmap -Pn -sV -&#45;script redis-info -p 6379,6380 -T3 -oX redis.xml 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sV -&#45;script redis-info -p 6379,6380 -T3 -oX redis.xml 127.0.0.1" start="1795783958" startstr="Fri Nov 27 12:52:38 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="2" services="6379-6380"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795783958" endtime="1795783969"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="6379"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="redis" product="Redis key-value store" version="7.0.15" extrainfo="64 bits" method="probed" conf="10"><cpe>cpe:/a:redislabs:redis:7.0.15</cpe><cpe>cpe:/a:redis:redis:7.0.15</cpe></service><script id="redis-info" output="&#xa;  Version: 7.0.15&#xa;  Operating System: Linux 6.18.44-fc-v880 x86_64&#xa;  Architecture: 64 bits&#xa;  Process ID: 17140&#xa;  Used CPU (sys): 0.290798&#xa;  Used CPU (user): 0.281798&#xa;  Connected clients: 1&#xa;  Connected slaves: 0&#xa;  Used memory: 919.29K&#xa;  Role: master&#xa;  Bind addresses: &#xa;    127.0.0.1&#xa;  Client connections: &#xa;    127.0.0.1"><elem key="Version">7.0.15</elem>
+<elem key="Operating System">Linux 6.18.44-fc-v880 x86_64</elem>
+<elem key="Architecture">64 bits</elem>
+<elem key="Process ID">17140</elem>
+<elem key="Used CPU (sys)">0.290798</elem>
+<elem key="Used CPU (user)">0.281798</elem>
+<elem key="Connected clients">1</elem>
+<elem key="Connected slaves">0</elem>
+<elem key="Used memory">919.29K</elem>
+<elem key="Role">master</elem>
+<table key="Bind addresses">
+<elem>127.0.0.1</elem>
+</table>
+<table key="Client connections">
+<elem>127.0.0.1</elem>
+</table>
+</script></port>
+<port protocol="tcp" portid="6380"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="redis" product="Redis key-value store" method="probed" conf="10"/></port>
+</ports>
+<times srtt="60" rttvar="3766" to="100000"/>
+</host>
+<runstats><finished time="1795783969" timestr="Fri Nov 27 12:52:49 2026" summary="Nmap done at Fri Nov 27 12:52:49 2026; 1 IP address (1 host up) scanned in 11.22 seconds" elapsed="11.22" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

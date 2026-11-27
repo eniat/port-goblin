@@ -33,7 +33,8 @@ def group_findings(findings: list[Finding]) -> list[Finding]:
     """Merge findings with the same ID and status into one result listing every host.
 
     Order of first appearance is kept. Hosts, reproduce commands, manual steps and
-    references are combined without duplicates.
+    references are combined without duplicates, and so are the lines of `observed`
+    (checks write one line per host there, so per-host detail survives grouping).
     """
     grouped: dict[tuple[str, Status], Finding] = {}
     for finding in findings:
@@ -47,7 +48,22 @@ def group_findings(findings: list[Finding]) -> list[Finding]:
             for item in getattr(finding, field):
                 if item not in merged:
                     merged.append(item)
+        if finding.observed:
+            lines = existing.observed.splitlines() if existing.observed else []
+            for line in finding.observed.splitlines():
+                if line not in lines:
+                    lines.append(line)
+            existing.observed = "\n".join(lines)
     return list(grouped.values())
+
+
+class CheckRecord(BaseModel):
+    """What a follow-up check sent, and what came back."""
+
+    target: str
+    check: str
+    sent: str
+    result: str
 
 
 class Script(BaseModel):
@@ -81,6 +97,12 @@ class Port(BaseModel):
     reason: str | None = None
     service: Service | None = None
     scripts: list[Script] = Field(default_factory=list)
+    # True when nmap's default scripts ran against this port (-sC, -A or --script default),
+    # so a default-category script with no output ran and found nothing.
+    default_scripts: bool = False
+
+    def script(self, script_id: str) -> Script | None:
+        return next((s for s in self.scripts if s.script_id == script_id), None)
 
     @property
     def key(self) -> tuple[str, int]:
@@ -112,6 +134,12 @@ class Host(BaseModel):
     ports: list[Port] = Field(default_factory=list)
     scripts: list[Script] = Field(default_factory=list)
 
+    def script(self, script_id: str) -> Script | None:
+        return next((s for s in self.scripts if s.script_id == script_id), None)
+
+    def port(self, protocol: str, portid: int) -> Port | None:
+        return next((p for p in self.ports if p.key == (protocol, portid)), None)
+
     def is_responsive(self) -> bool:
         """Up for a real reason (not just -Pn), or with any open port."""
         if self.status == "up" and self.status_reason != "user-set":
@@ -141,8 +169,16 @@ class Host(BaseModel):
             if index is None:
                 by_key[port.key] = len(self.ports)
                 self.ports.append(port)
-            elif port.detail_score() >= self.ports[index].detail_score():
-                self.ports[index] = port
+            else:
+                old = self.ports[index]
+                keep, extra = (
+                    (port, old) if port.detail_score() >= old.detail_score() else (old, port)
+                )
+                keep = keep.model_copy(deep=True)
+                known = {s.script_id for s in keep.scripts}
+                keep.scripts += [s for s in extra.scripts if s.script_id not in known]
+                keep.default_scripts = keep.default_scripts or extra.default_scripts
+                self.ports[index] = keep
         known = {s.script_id for s in self.scripts}
         for script in other.scripts:
             if script.script_id not in known:
@@ -206,3 +242,5 @@ class Report(BaseModel):
     run_id: str | None = None
     tcp_scanned: bool = True
     udp_scanned: bool = True
+    checks_run: bool = False
+    check_log: list[CheckRecord] = Field(default_factory=list)

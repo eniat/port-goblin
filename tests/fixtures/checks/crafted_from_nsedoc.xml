@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written fixture. Script output is copied from the @output examples in the nmap 7.94
+     script sources (rdp-enum-encryption, nfs-showmount, mongodb-databases, ipmi-version,
+     ipmi-cipher-zero), because these services could not be run in the build container. -->
+<nmaprun scanner="nmap" args="nmap -Pn -sV --script rdp-enum-encryption,nfs-showmount,mongodb-databases -p 111,3389,27017 10.0.0.30" version="7.94SVN" xmloutputversion="1.05">
+<host><status state="up" reason="user-set"/><address addr="10.0.0.30" addrtype="ipv4"/><hostnames/>
+<ports>
+<port protocol="tcp" portid="111"><state state="open" reason="syn-ack"/><service name="rpcbind" product="rpcbind" method="probed" conf="10"/><script id="nfs-showmount" output="&#xa;  /home/storage/backup 10.46.200.0/255.255.255.0&#xa;  /home 1.2.3.4/255.255.255.255 10.46.200.0/255.255.255.0"/></port>
+<port protocol="tcp" portid="3389"><state state="open" reason="syn-ack"/><service name="ms-wbt-server" product="Microsoft Terminal Services" method="probed" conf="10"/><script id="rdp-enum-encryption" output="&#xa;  Security layer&#xa;    CredSSP (NLA): SUCCESS&#xa;    CredSSP with Early User Auth: SUCCESS&#xa;    Native RDP: SUCCESS&#xa;    RDSTLS: SUCCESS&#xa;    SSL: SUCCESS&#xa;  RDP Encryption level: High&#xa;    40-bit RC4: SUCCESS&#xa;    56-bit RC4: SUCCESS&#xa;    128-bit RC4: SUCCESS&#xa;    FIPS 140-1: SUCCESS&#xa;  RDP Protocol Version:  RDP 5.x, 6.x, 7.x, or 8.x server"/></port>
+<port protocol="tcp" portid="27017"><state state="open" reason="syn-ack"/><service name="mongodb" product="MongoDB" method="probed" conf="10"/><script id="mongodb-databases" output="&#xa;  ok = 1&#xa;  databases&#xa;    1&#xa;      empty = false&#xa;      sizeOnDisk = 83886080&#xa;      name = test&#xa;    0&#xa;      empty = false&#xa;      sizeOnDisk = 83886080&#xa;      name = httpstorage&#xa;    3&#xa;      empty = true&#xa;      sizeOnDisk = 1&#xa;      name = local&#xa;    2&#xa;      empty = true&#xa;      sizeOnDisk = 1&#xa;      name = admin&#xa;  totalSize = 167772160"/></port>
+<port protocol="udp" portid="623"><state state="open|filtered" reason="no-response"/><service name="asf-rmcp" method="table" conf="3"/><script id="ipmi-version" output="&#xa;  Version: IPMI-2.0&#xa;  UserAuth: password, md5, md2&#xa;  PassAuth: null_user&#xa;  Level: 1.2,2.0"/><script id="ipmi-cipher-zero" output="&#xa;  VULNERABLE:&#xa;  IPMI 2.0 RAKP Cipher Zero Authentication Bypass&#xa;    State: VULNERABLE&#xa;    Risk factor: High"/></port>
+</ports></host>
+<host><status state="up" reason="user-set"/><address addr="10.0.0.31" addrtype="ipv4"/><hostnames/>
+<ports>
+<port protocol="tcp" portid="3389"><state state="open" reason="syn-ack"/><service name="ms-wbt-server" method="probed" conf="10"/><script id="rdp-enum-encryption" output="&#xa;  Security layer&#xa;    CredSSP (NLA): SUCCESS&#xa;    CredSSP with Early User Auth: SUCCESS&#xa;    Native RDP: FAILED&#xa;    RDSTLS: FAILED&#xa;    SSL: FAILED&#xa;  RDP Protocol Version:  RDP 10.x server"/></port>
+<port protocol="tcp" portid="23"><state state="open" reason="syn-ack"/><service name="telnet" product="Linux telnetd" method="probed" conf="10"/></port>
+<port protocol="tcp" portid="6000"><state state="open" reason="syn-ack"/><service name="X11" extrainfo="access denied" method="probed" conf="10"/></port>
+<port protocol="tcp" portid="443"><state state="open" reason="syn-ack"/><service name="http" tunnel="ssl" method="probed" conf="10"/><script id="ssl-cert" output="Subject: commonName=old.example.test&#xa;Issuer: commonName=old.example.test&#xa;Public Key type: rsa&#xa;Public Key bits: 1024&#xa;Signature Algorithm: sha1WithRSAEncryption&#xa;Not valid before: 2019-01-01T00:00:00&#xa;Not valid after:  2020-01-01T00:00:00&#xa;MD5:   bf0e:e591:3411:d124:7d2b:9988:94bc:35c7"/></port>
+</ports></host>
+<host><status state="up" reason="user-set"/><address addr="10.0.0.32" addrtype="ipv4"/><hostnames/>
+<ports>
+<port protocol="udp" portid="69"><state state="open|filtered" reason="no-response"/><service name="tftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="513"><state state="open" reason="syn-ack"/><service name="login" method="table" conf="3"/></port>
+</ports></host>
+</nmaprun>

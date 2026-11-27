@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:52:49 2026 as: nmap -Pn -sU -sV -&#45;version-intensity 0 -&#45;script snmp-info,snmp-sysdescr -&#45;script-args snmpcommunity=public -p 161,1161 -T3 -oX snmp.xml 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sU -sV -&#45;version-intensity 0 -&#45;script snmp-info,snmp-sysdescr -&#45;script-args snmpcommunity=public -p 161,1161 -T3 -oX snmp.xml 127.0.0.1" start="1795783969" startstr="Fri Nov 27 12:52:49 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="udp" protocol="udp" numservices="2" services="161,1161"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795783969" endtime="1795783976"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="64"/><service name="snmp" product="SNMPv1 server; net-snmp SNMPv3 server" extrainfo="public" hostname="vm" method="probed" conf="10"/><script id="snmp-info" output="&#xa;  enterprise: net-snmp&#xa;  engineIDFormat: unknown&#xa;  engineIDData: f82a301d147d096b00000000&#xa;  snmpEngineBoots: 1&#xa;  snmpEngineTime: 20s"><elem key="enterprise">net-snmp</elem>
+<elem key="engineIDFormat">unknown</elem>
+<elem key="engineIDData">f82a301d147d096b00000000</elem>
+<elem key="snmpEngineBoots">1</elem>
+<elem key="snmpEngineTime">20s</elem>
+</script><script id="snmp-sysdescr" output="Linux fs01 6.8.0 test&#xa;  System uptime: 19.93s (1993 timeticks)"/></port>
+<port protocol="udp" portid="1161"><state state="open|filtered" reason="no-response" reason_ttl="0"/><service name="health-polling" method="table" conf="3"/></port>
+</ports>
+<times srtt="571" rttvar="5000" to="100000"/>
+</host>
+<runstats><finished time="1795783976" timestr="Fri Nov 27 12:52:56 2026" summary="Nmap done at Fri Nov 27 12:52:56 2026; 1 IP address (1 host up) scanned in 6.53 seconds" elapsed="6.53" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

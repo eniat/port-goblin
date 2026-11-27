@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:53:41 2026 as: nmap -Pn -sV -&#45;script ldap-rootdse,ldap-search -&#45;script-args ldap.maxobjects=1,ldap.attrib=distinguishedName -p 389 -T3 -oX ldap_noanon.xml 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sV -&#45;script ldap-rootdse,ldap-search -&#45;script-args ldap.maxobjects=1,ldap.attrib=distinguishedName -p 389 -T3 -oX ldap_noanon.xml 127.0.0.1" start="1795784021" startstr="Fri Nov 27 12:53:41 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="1" services="389"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795784021" endtime="1795784032"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="389"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ldap" product="OpenLDAP" version="2.2.X - 2.3.X" method="probed" conf="10"><cpe>cpe:/a:openldap:openldap</cpe></service></port>
+</ports>
+<times srtt="53" rttvar="5000" to="100000"/>
+</host>
+<runstats><finished time="1795784032" timestr="Fri Nov 27 12:53:52 2026" summary="Nmap done at Fri Nov 27 12:53:52 2026; 1 IP address (1 host up) scanned in 11.19 seconds" elapsed="11.19" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

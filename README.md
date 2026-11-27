@@ -4,7 +4,7 @@ Knocking on every door.
 
 nmap scanning and triage for internal and external infrastructure tests. By Taine (github.com/eniat).
 
-**Status: build phase 1 of 4.** Scanning, import, resume, host and service output, `--save` and `doctor` work. Follow-up checks (phase 2) and version intelligence (phase 3) are not built yet and are reported as `Not assessed`. The full README (installation, every check and its limitations, the NSE script category table) comes in phase 4.
+**Status: build phase 2 of 4.** Scanning, import, resume, follow-up checks, quick wins, host and service output, `--save` and `doctor` work. Version intelligence (phase 3) is not built yet and is reported as `Not assessed`. The full README (installation, every check and its limitations, the NSE script category table) comes in phase 4.
 
 ## Development
 
