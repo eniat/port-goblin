@@ -355,7 +355,7 @@ def scan(
     tools = preflight.detect_tools()
     plan = preflight.build_plan(target_set, options, tools, config.scan.udp_parallel)
     checks = "No (--no-checks)" if no_checks else "Yes (read-only, one attempt per service)"
-    terminal.banner(console)
+    terminal.art_banner(console)
     terminal.render_preflight(
         console, plan, checks, str(save) if save else None, _intel_label(no_intel)
     )
@@ -397,7 +397,7 @@ def resume(
     except RunNotFoundError as exc:
         raise _fail(console, str(exc), 2) from exc
     state = engine.state
-    terminal.banner(console)
+    terminal.art_banner(console)
     terminal.render_runs(console, [(engine.workdir, state)], hint=False)
     console.print(
         f"Mode {state.options.mode.value}, {state.host_count} hosts, "
@@ -431,6 +431,7 @@ def import_(
 ) -> None:
     """Analyse existing nmap XML files instead of scanning."""
     console = terminal.make_console(no_color)
+    terminal.art_banner(console)
     _check_save_path(console, save, yes)
     result = parse_many(files)
     if not result.hosts and len(result.parse_errors) == len(files):
@@ -479,7 +480,6 @@ def _import_checks(
     if not plan:
         console.print("No imported service matches a follow-up check.")
         return None
-    terminal.banner(console)
     terminal.render_import_preflight(console, plan, preflight.detect_tools(), preflight.is_root())
     if not preflight.confirm(yes, console.input):
         console.print("Follow-up checks skipped. No traffic was sent.")
@@ -616,6 +616,7 @@ def update(
 ) -> None:
     """Refresh the KEV feed and endoflife.date data, update Exploit-DB, find Metasploit."""
     console = terminal.make_console(no_color)
+    terminal.art_banner(console)
     config, _ = _load_config(console)
     intel = config.intelligence
     cache = JsonCache(cache_dir(), intel.cache_ttl_hours)

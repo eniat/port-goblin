@@ -12,6 +12,7 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TaskID, TextColumn, TimeElapsedColumn
 from rich.table import Table
+from rich.text import Text
 
 from portgoblin import TAGLINE, __version__
 from portgoblin.analysis.quick_wins import Sections, sections
@@ -21,6 +22,7 @@ from portgoblin.core import nmap_runner as nr
 from portgoblin.core.engine import RunState, state_summary
 from portgoblin.core.models import Finding, Host, Report, Status
 from portgoblin.core.preflight import PreflightPlan, ToolStatus, format_duration, timing_label
+from portgoblin.output import art
 
 PORT_LIST_LIMIT = 12
 
@@ -47,6 +49,71 @@ def host_count_label(entries: list[str]) -> str:
 def banner(console: Console) -> None:
     console.print(f"[bold]PortGoblin {__version__}[/bold] | {TAGLINE}")
     console.print()
+
+
+GOBLIN_STYLE = "green"
+DOOR_STYLE = "orange4"
+KNOCK_STYLE = "bold yellow"
+PEEKER_STYLE = "cornflower_blue"
+TITLE_STYLE = "bold green"
+TITLE_GAP = 2
+
+
+def _goblin_text(row: int) -> Text:
+    line = art.GOBLIN_DOOR[row] if row < len(art.GOBLIN_DOOR) else ""
+    text = Text()
+    for col, char in enumerate(line.ljust(art.ART_WIDTH)):
+        if char == " ":
+            text.append(char)
+        elif art.is_knock(row, col):
+            text.append(char, KNOCK_STYLE)
+        elif art.is_peeker(row, col):
+            text.append(char, PEEKER_STYLE)
+        elif art.is_door(row, col):
+            text.append(char, DOOR_STYLE)
+        else:
+            text.append(char, GOBLIN_STYLE)
+    return text
+
+
+def art_lines(width: int) -> list[Text]:
+    """The goblin knocking on the door, with the title beside it if it fits.
+
+    Wide terminals get the title on one line, narrower ones get Port over Goblin, and below
+    the width of the art itself there is no art at all.
+    """
+    if width < art.ART_WIDTH:
+        return []
+    title: list[str] = []
+    for candidate in (art.TITLE_WIDE, art.TITLE_PORT + [""] + art.TITLE_GOBLIN):
+        if art.ART_WIDTH + TITLE_GAP + max(len(line) for line in candidate) <= width:
+            title = candidate
+            break
+    rows = len(art.GOBLIN_DOOR)
+    start = (rows - len(title)) // 2
+    lines = []
+    for row in range(rows):
+        text = _goblin_text(row)
+        index = row - start
+        if title and 0 <= index < len(title):
+            text.append(" " * TITLE_GAP + title[index], TITLE_STYLE)
+        text.rstrip()
+        lines.append(text)
+    return lines
+
+
+def art_banner(console: Console) -> None:
+    """The art on an interactive colour terminal, otherwise the plain banner line.
+
+    Saved reports and --no-color output always get the plain line.
+    """
+    if console.is_terminal and console.color_system and not console.no_color:
+        lines = art_lines(console.width)
+        if lines:
+            for line in lines:
+                console.print(line, no_wrap=True, crop=True)
+            console.print()
+    banner(console)
 
 
 def _kv_table() -> Table:
@@ -573,7 +640,7 @@ def render_doctor(
     config_path: str,
     extra: list[tuple[str, str]] | None = None,
 ) -> None:
-    banner(console)
+    art_banner(console)
     table = Table(title="Tools", title_justify="left", box=box.SIMPLE_HEAD, title_style="bold")
     for column in ("Tool", "Status", "Version", "Path or install"):
         table.add_column(column)

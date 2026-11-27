@@ -148,7 +148,9 @@ portgoblin import tcp.xml udp.xml
 
 ## Output
 
-In order:
+Commands open with the goblin knocking on a door while someone peeks round it, with the title beside it when the terminal is wide enough. It only appears on an interactive colour terminal: `--no-color`, pipes and `--save` files get the one-line banner.
+
+The report, in order:
 
 1. **Summary:** mode, targets, live hosts, TCP open, UDP open, UDP open|filtered, duration.
 2. **Quick wins:** issues, then manual checks. Each shows hosts, what was observed, why it matters, the fix and commands to reproduce it.
