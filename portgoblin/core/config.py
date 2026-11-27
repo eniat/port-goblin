@@ -65,11 +65,25 @@ class TimeoutsConfig(StrictModel):
     http: int = Field(10, gt=0)
 
 
+class IntelligenceConfig(StrictModel):
+    cache_ttl_hours: int = Field(24, gt=0)
+    request_timeout: int = Field(30, gt=0)
+    # Seconds between NVD requests: NVD allows 5 requests per 30 s without a key, 50 with one.
+    nvd_delay_no_key: float = Field(6.0, ge=0)
+    nvd_delay_with_key: float = Field(0.6, ge=0)
+    max_cves_shown: int = Field(10, gt=0)
+    # nmap CPE vendor:product to endoflife.date product, for products whose CPE there differs.
+    eol_aliases: dict[str, str] = Field(
+        default_factory=lambda: {"igor_sysoev:nginx": "nginx", "samba:samba": "samba"}
+    )
+
+
 class Config(StrictModel):
     rates: RatesConfig = Field(default_factory=RatesConfig)
     scan: ScanConfig = Field(default_factory=ScanConfig)
     nse: NseConfig = Field(default_factory=NseConfig)
     timeouts: TimeoutsConfig = Field(default_factory=TimeoutsConfig)
+    intelligence: IntelligenceConfig = Field(default_factory=IntelligenceConfig)
 
 
 class ConfigError(Exception):

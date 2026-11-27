@@ -16,6 +16,7 @@ from rich.table import Table
 from portgoblin import TAGLINE, __version__
 from portgoblin.analysis.quick_wins import Sections, sections
 from portgoblin.analysis.services import group_services, open_filtered_udp
+from portgoblin.analysis.versions import LABEL
 from portgoblin.core import nmap_runner as nr
 from portgoblin.core.engine import RunState, state_summary
 from portgoblin.core.models import Finding, Host, Report, Status
@@ -56,7 +57,11 @@ def _kv_table() -> Table:
 
 
 def render_preflight(
-    console: Console, plan: PreflightPlan, checks: str, save_path: str | None
+    console: Console,
+    plan: PreflightPlan,
+    checks: str,
+    save_path: str | None,
+    intel: str | None = None,
 ) -> None:
     ts = plan.target_set
     table = _kv_table()
@@ -83,6 +88,8 @@ def render_preflight(
         phases.append(f"4 UDP top {plan.options.top_udp} ports" + (f" ({when})" if when else ""))
     table.add_row("Phases", ", ".join(phases))
     table.add_row("Follow-up checks", checks)
+    if intel:
+        table.add_row("Version intelligence", intel)
     if save_path:
         table.add_row("Save to", escape(save_path))
     missing = plan.missing_tools
@@ -190,6 +197,11 @@ class RichReporter:
 
     def message(self, text: str) -> None:
         self.console.print(escape(text))
+
+    def set_label(self, key: str, label: str) -> None:
+        task = self.tasks.get(key)
+        if task is not None:
+            self.progress.update(task, description=escape(label))
 
 
 def _port_list(ports: list[int]) -> str:
@@ -403,6 +415,69 @@ def _not_assessed(console: Console, report: Report, parts: Sections, verbose: bo
     console.print()
 
 
+def _epss(value: float | None) -> str:
+    return f"{value:.2f}" if value is not None else "-"
+
+
+def _vulnerable_versions(console: Console, report: Report, verbose: bool) -> None:
+    if not report.intel_run:
+        return
+    rows = report.version_rows
+    console.print(f"[bold]Vulnerable versions[/bold]   {plural(len(rows), 'service')}")
+    if not rows:
+        console.print("  No CVE matches or end-of-life releases for the versions nmap reported.")
+        console.print()
+        return
+    console.print(f"  Every row is {LABEL}.")
+    wide = console.width >= 110
+    edb, msf, eol = ("Exploit-DB", "Metasploit", "End of life") if wide else ("EDB", "MSF", "EOL")
+    if not wide:
+        console.print("  EDB = Exploit-DB, MSF = Metasploit, EOL = end of life.")
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1))
+    table.add_column("Host:Port", no_wrap=True)
+    table.add_column("Service", overflow="fold", min_width=14)
+    for column in ("CVEs", "KEV", "EPSS", edb, msf):
+        table.add_column(column, justify="right", no_wrap=True)
+    table.add_column(eol, overflow="fold")
+    for row in rows:
+        table.add_row(
+            row.target,
+            escape(row.service),
+            str(len(row.cves)),
+            str(row.kev_count) if row.kev_count else "-",
+            _epss(row.max_epss),
+            str(row.exploit_count)
+            + (f" +{len(row.possible_exploits)}?" if row.possible_exploits else ""),
+            str(row.metasploit_count) if row.metasploit_count else "-",
+            escape(row.eol.split(" (")[0].split(" ended ")[-1]) if row.eol else "-",
+        )
+    console.print(table)
+    for row in rows:
+        notes = list(row.notes)
+        if not verbose and not notes:
+            continue
+        console.print(f"  [bold]{escape(row.target)}[/bold] {escape(row.service)}")
+        for note in notes:
+            console.print(f"    Note: {escape(note)}")
+        if verbose:
+            for cve in row.cves:
+                bits = [cve.cve_id, f"CVSS {cve.cvss_label}", f"EPSS {_epss(cve.epss)}"]
+                if cve.kev:
+                    bits.append("CISA KEV")
+                if cve.metasploit:
+                    bits.append("Metasploit " + ", ".join(cve.metasploit))
+                if cve.exploits:
+                    bits.append("Exploit-DB " + "; ".join(cve.exploits))
+                console.print("    " + escape(" | ".join(bits)))
+            for exploit in row.possible_exploits:
+                console.print(f"    Possible match (title only): Exploit-DB {escape(exploit)}")
+    if any(r.possible_exploits for r in rows):
+        console.print("  Exploit-DB +N? = title-only possible matches, not tied to a listed CVE.")
+    if not verbose:
+        console.print("  --verbose lists every CVE, Exploit-DB entry and Metasploit module.")
+    console.print()
+
+
 def _check_log(console: Console, report: Report) -> None:
     if not report.check_log:
         return
@@ -426,9 +501,10 @@ def render_report(console: Console, report: Report, verbose: bool = False) -> No
     parts = sections(report.findings)
     banner(console)
     _summary(console, report)
-    if report.checks_run:
+    if report.checks_run or report.intel_run:
         _quick_wins(console, parts, verbose)
     _observations(console, parts, verbose)
+    _vulnerable_versions(console, report, verbose)
     _hosts_table(console, report)
     if verbose:
         for host in report.scan.live_hosts():
@@ -495,6 +571,7 @@ def render_doctor(
     cache: str,
     script_rows: list[tuple[str, str, str]],
     config_path: str,
+    extra: list[tuple[str, str]] | None = None,
 ) -> None:
     banner(console)
     table = Table(title="Tools", title_justify="left", box=box.SIMPLE_HEAD, title_style="bold")
@@ -511,6 +588,8 @@ def render_doctor(
     info = _kv_table()
     info.add_row("Running as root", "Yes" if root else "No (scan and resume need root)")
     info.add_row("Cache", escape(cache))
+    for label, value in extra or []:
+        info.add_row(escape(label), escape(value))
     info.add_row("Config", escape(config_path))
     console.print(info)
     console.print()

@@ -226,6 +226,45 @@ def ip_sort_key(address: str) -> tuple[int, ...]:
         return (999,)
 
 
+class VersionCve(BaseModel):
+    cve_id: str
+    cvss: float | None = None
+    cvss_label: str = "-"
+    kev: bool = False
+    epss: float | None = None
+    exploits: list[str] = Field(default_factory=list)  # "EDB-ID title"
+    metasploit: list[str] = Field(default_factory=list)
+
+
+class VersionRow(BaseModel):
+    """Version intelligence for one host:port. Always version-based and unconfirmed."""
+
+    target: str
+    service: str
+    cpes: list[str] = Field(default_factory=list)
+    cves: list[VersionCve] = Field(default_factory=list)
+    possible_exploits: list[str] = Field(default_factory=list)  # title-only matches
+    eol: str | None = None
+    notes: list[str] = Field(default_factory=list)
+
+    @property
+    def kev_count(self) -> int:
+        return sum(1 for c in self.cves if c.kev)
+
+    @property
+    def max_epss(self) -> float | None:
+        scores = [c.epss for c in self.cves if c.epss is not None]
+        return max(scores) if scores else None
+
+    @property
+    def exploit_count(self) -> int:
+        return len({e for c in self.cves for e in c.exploits})
+
+    @property
+    def metasploit_count(self) -> int:
+        return len({m for c in self.cves for m in c.metasploit})
+
+
 class Report(BaseModel):
     source: str  # "scan" or "import"
     mode: str | None = None
@@ -244,3 +283,5 @@ class Report(BaseModel):
     udp_scanned: bool = True
     checks_run: bool = False
     check_log: list[CheckRecord] = Field(default_factory=list)
+    intel_run: bool = False
+    version_rows: list[VersionRow] = Field(default_factory=list)

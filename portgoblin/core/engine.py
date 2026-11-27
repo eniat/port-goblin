@@ -58,6 +58,7 @@ class ScanOptions(BaseModel):
     udp: bool = True
     udp_parallel: bool = True
     checks: bool = True
+    intel: bool = True
     stats_every: str = "30s"
 
     def phases(self) -> list[str]:

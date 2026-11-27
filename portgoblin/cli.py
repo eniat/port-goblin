@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +14,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from portgoblin import TAGLINE, __version__
+from portgoblin.analysis.versions import IntelResult, Sources, VersionIntel
 from portgoblin.core import preflight
 from portgoblin.core.config import (
     Config,
@@ -35,6 +38,15 @@ from portgoblin.core.models import CheckRecord, Finding, Report, ScanResult, Sta
 from portgoblin.core.nmap_parser import parse_many
 from portgoblin.core.nmap_runner import NmapError, NmapRunner, find_script_db, parse_script_db
 from portgoblin.core.targets import TargetError, build_target_set, read_target_file, split_specs
+from portgoblin.intelligence.cache import FetchError, JsonCache
+from portgoblin.intelligence.eol import EOL_URL, load_eol
+from portgoblin.intelligence.epss import epss_scores
+from portgoblin.intelligence.exploitdb import INSTALL as INSTALL_EXPLOITDB
+from portgoblin.intelligence.exploitdb import ExploitDb
+from portgoblin.intelligence.kev import KEV_URL, load_kev
+from portgoblin.intelligence.metasploit import INSTALL as INSTALL_MSF
+from portgoblin.intelligence.metasploit import MetasploitIndex
+from portgoblin.intelligence.nvd import NvdClient
 from portgoblin.output import terminal
 
 app = typer.Typer(
@@ -107,18 +119,46 @@ def _check_save_path(console: Console, save: Path | None, assume_yes: bool) -> N
             raise _fail(console, "Not overwriting. Choose another --save path.", 2)
 
 
-def _build_gaps() -> list[Finding]:
-    """Parts of the tool that are not built yet are reported, never implied."""
-    return [
-        Finding(
-            finding_id="BUILD-002",
-            check="intelligence",
-            title="Version intelligence",
-            status=Status.NOT_ASSESSED,
-            observed="Not assessed: not built yet (build phase 3)",
-            why_it_matters="CVE, KEV, EPSS, Exploit-DB and Metasploit lookups come from this.",
-        )
-    ]
+def _intel_label(no_intel: bool) -> str:
+    if no_intel:
+        return "No (--no-intel)"
+    key = "NVD_API_KEY set" if os.environ.get("NVD_API_KEY") else "no NVD_API_KEY, slower"
+    return f"Yes: product versions are sent to NVD, FIRST and endoflife.date ({key})"
+
+
+def make_intel(config: Config, progress=None) -> VersionIntel:
+    intel = config.intelligence
+    cache = JsonCache(cache_dir(), intel.cache_ttl_hours)
+    timeout = intel.request_timeout
+    nvd = NvdClient(cache, timeout, intel.nvd_delay_no_key, intel.nvd_delay_with_key)
+    searchsploit = shutil.which("searchsploit")
+    msf_path = preflight.find_msf_metadata()
+    sources = Sources(
+        nvd=nvd,
+        kev=lambda: load_kev(cache, timeout),
+        epss=lambda cves: epss_scores(cves, cache, timeout),
+        eol=lambda: load_eol(cache, intel.eol_aliases, timeout),
+        exploitdb=ExploitDb(searchsploit) if searchsploit else None,
+        metasploit=(lambda: MetasploitIndex.load(msf_path)) if msf_path else None,
+    )
+    return VersionIntel(sources, progress, intel.max_cves_shown)
+
+
+def _run_intel(config: Config, result: ScanResult, reporter) -> IntelResult:
+    key = "intel"
+    label = "Version intelligence"
+    if reporter:
+        reporter.phase_start(key, label)
+
+    def progress(text: str) -> None:
+        if reporter and hasattr(reporter, "set_label"):
+            reporter.set_label(key, f"{label}: {text}")
+
+    try:
+        return asyncio.run(make_intel(config, progress).run(result))
+    finally:
+        if reporter:
+            reporter.phase_end(key)
 
 
 def load_script_db() -> dict[str, set[str]]:
@@ -144,9 +184,10 @@ def _scan_report(
     result: ScanResult,
     interrupted: bool,
     followups: FollowUps | None = None,
+    intel: IntelResult | None = None,
 ) -> Report:
     state = engine.state
-    findings = _build_gaps() + (followups.findings if followups else [])
+    findings = (followups.findings if followups else []) + (intel.findings if intel else [])
     return Report(
         source="scan",
         mode=state.options.mode.value,
@@ -164,6 +205,8 @@ def _scan_report(
         udp_scanned=state.options.udp,
         checks_run=followups is not None,
         check_log=followups.ctx.records if followups else [],
+        intel_run=intel is not None,
+        version_rows=intel.rows if intel else [],
     )
 
 
@@ -180,6 +223,7 @@ def _output(console: Console, report: Report, save: Path | None, verbose: bool) 
 
 def _execute(console: Console, engine: Engine, save: Path | None, verbose: bool) -> None:
     followups: FollowUps | None = None
+    intel: IntelResult | None = None
     try:
         with terminal.RichReporter(console) as reporter:
             engine.reporter = reporter
@@ -189,6 +233,8 @@ def _execute(console: Console, engine: Engine, save: Path | None, verbose: bool)
                     engine.config, engine.workdir / "checks", reporter, preflight.is_root()
                 )
                 asyncio.run(followups.run(result))
+            if engine.state.options.intel:
+                intel = _run_intel(engine.config, result, reporter)
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted. Running processes stopped.[/yellow]")
         engine.state.status = RunStatus.INTERRUPTED
@@ -206,7 +252,7 @@ def _execute(console: Console, engine: Engine, save: Path | None, verbose: bool)
         console.print(f"Resume with: portgoblin resume {engine.state.run_id}")
         raise typer.Exit(1) from None
 
-    report = _scan_report(engine, result, False, followups)
+    report = _scan_report(engine, result, False, followups, intel)
     _output(console, report, save, verbose)
     if engine.state.keep_raw:
         copied = engine.keep_raw_files(Path(engine.state.keep_raw))
@@ -231,6 +277,9 @@ def scan(
     top_udp: int | None = typer.Option(None, "--top-udp", min=1, max=65535, help="UDP ports."),
     rate: int | None = typer.Option(None, "--rate", min=1, help="nmap --min-rate for TCP."),
     no_checks: bool = typer.Option(False, "--no-checks", help="Skip follow-up checks."),
+    no_intel: bool = typer.Option(
+        False, "--no-intel", help="Skip version intelligence (NVD, KEV, EPSS, Exploit-DB)."
+    ),
     save: Path | None = typer.Option(None, "--save", help="Also write the output as plain text."),
     keep_raw: Path | None = typer.Option(
         None, "--keep-raw", help="Copy raw nmap files to this folder before clean-up."
@@ -270,13 +319,16 @@ def scan(
         udp=not tcp_only,
         udp_parallel=config.scan.udp_parallel,
         checks=not no_checks,
+        intel=not no_intel,
         stats_every=config.scan.stats_every,
     )
     tools = preflight.detect_tools()
     plan = preflight.build_plan(target_set, options, tools, config.scan.udp_parallel)
     checks = "No (--no-checks)" if no_checks else "Yes (read-only, one attempt per service)"
     terminal.banner(console)
-    terminal.render_preflight(console, plan, checks, str(save) if save else None)
+    terminal.render_preflight(
+        console, plan, checks, str(save) if save else None, _intel_label(no_intel)
+    )
     if not any(t.name == "nmap" and t.found for t in tools):
         raise _fail(console, f"nmap is not installed ({preflight.INSTALL['nmap']})")
     if not preflight.confirm(yes, console.input):
@@ -333,6 +385,9 @@ def resume(
 def import_(
     files: list[Path] = typer.Argument(..., help="nmap XML files (TCP, UDP or both)."),
     no_checks: bool = typer.Option(False, "--no-checks", help="Skip follow-up checks."),
+    no_intel: bool = typer.Option(
+        False, "--no-intel", help="Skip version intelligence (NVD, KEV, EPSS, Exploit-DB)."
+    ),
     save: Path | None = typer.Option(None, "--save", help="Also write the output as plain text."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask questions."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show every port per host."),
@@ -346,10 +401,20 @@ def import_(
         for error in result.parse_errors:
             console.print(f"[red]Not assessed:[/red] {escape(error)}")
         raise typer.Exit(1)
-    findings = _build_gaps()
+    findings: list[Finding] = []
     followups: FollowUps | None = None
+    intel: IntelResult | None = None
     if not no_checks:
         followups = _import_checks(console, result, yes, findings)
+    if not no_intel and not (followups and followups.interrupted):
+        config, _ = _load_config(console)
+        try:
+            with terminal.RichReporter(console) as reporter:
+                intel = _run_intel(config, result, reporter)
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Version intelligence interrupted.[/yellow]")
+        if intel:
+            findings += intel.findings
     report = Report(
         source="import",
         imported_files=[str(f) for f in files],
@@ -359,6 +424,8 @@ def import_(
         udp_scanned=any(p.protocol == "udp" for h in result.hosts.values() for p in h.ports),
         checks_run=followups is not None,
         check_log=followups.ctx.records if followups else [],
+        intel_run=intel is not None,
+        version_rows=intel.rows if intel else [],
     )
     _output(console, report, save, verbose)
     if followups and followups.interrupted:
@@ -474,7 +541,79 @@ def doctor(
         _cache_summary(),
         _script_rows(config),
         config_path,
+        _intel_status(config),
     )
+
+
+def _intel_status(config: Config) -> list[tuple[str, str]]:
+    cache = JsonCache(cache_dir(), config.intelligence.cache_ttl_hours)
+    rows = [
+        (
+            "NVD_API_KEY",
+            "Set" if os.environ.get("NVD_API_KEY") else "Not set (NVD lookups are slower)",
+        )
+    ]
+    kev = cache.get("kev", KEV_URL, allow_stale=True)
+    saved = cache.saved_at("kev", KEV_URL)
+    if kev and saved:
+        stamp = datetime.fromtimestamp(saved).strftime("%Y-%m-%d %H:%M")
+        rows.append(("KEV catalogue", f"version {kev.get('catalogVersion')}, fetched {stamp}"))
+    else:
+        rows.append(("KEV catalogue", "Not cached (portgoblin update fetches it)"))
+    saved = cache.saved_at("eol", EOL_URL)
+    rows.append(
+        (
+            "endoflife.date",
+            (
+                f"fetched {datetime.fromtimestamp(saved).strftime('%Y-%m-%d %H:%M')}"
+                if saved
+                else "Not cached (portgoblin update fetches it)"
+            ),
+        )
+    )
+    return rows
+
+
+@app.command()
+def update(
+    no_color: bool = typer.Option(False, "--no-color", help="Plain output with no colour."),
+) -> None:
+    """Refresh the KEV feed and endoflife.date data, update Exploit-DB, find Metasploit."""
+    console = terminal.make_console(no_color)
+    config, _ = _load_config(console)
+    intel = config.intelligence
+    cache = JsonCache(cache_dir(), intel.cache_ttl_hours)
+    failed = False
+    try:
+        catalogue = load_kev(cache, intel.request_timeout, refresh=True)
+        console.print(f"KEV: catalogue {catalogue.version}, {len(catalogue.entries)} CVEs")
+    except FetchError as exc:
+        failed = True
+        console.print(f"[red]KEV: could not fetch the feed ({escape(str(exc))})[/red]")
+    try:
+        index = load_eol(cache, intel.eol_aliases, intel.request_timeout, refresh=True)
+        console.print(f"endoflife.date: {len(index.products)} products")
+    except FetchError as exc:
+        failed = True
+        console.print(f"[red]endoflife.date: could not fetch ({escape(str(exc))})[/red]")
+    searchsploit = shutil.which("searchsploit")
+    if searchsploit:
+        console.print("Exploit-DB: running searchsploit -u (it may ask for your sudo password)")
+        code = subprocess.run([searchsploit, "-u"], check=False).returncode
+        # searchsploit documents exit code 6 as "updated packages".
+        if code not in (0, 6):
+            failed = True
+            console.print(f"[red]Exploit-DB: searchsploit -u exited with code {code}[/red]")
+    else:
+        console.print(f"Exploit-DB: searchsploit not found ({INSTALL_EXPLOITDB})")
+    msf = preflight.find_msf_metadata()
+    console.print(
+        f"Metasploit: metadata at {msf}"
+        if msf
+        else f"Metasploit: metadata not found ({INSTALL_MSF})"
+    )
+    if failed:
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

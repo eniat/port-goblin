@@ -1,0 +1,205 @@
+{
+ "exploit_linux/ssh/openssh_musl_crypt_bypass": {
+  "name": "OpenSSH musl-libc crypt() Authentication Bypass",
+  "fullname": "exploit/linux/ssh/openssh_musl_crypt_bypass",
+  "aliases": [],
+  "rank": 600,
+  "disclosure_date": "2026-11-05",
+  "type": "exploit",
+  "author": [
+   "\u00d6zg\u00fcn K\u00fcltekin",
+   "Emanuele Cervelli"
+  ],
+  "description": "On musl-libc based systems (Alpine Linux, OpenWrt, Buildroot, etc.),\n          OpenSSH password authentication can be bypassed for accounts whose\n          /etc/shadow password field is \"*\" (locked).\n\n          musl's crypt() implementation returns \"*\" when given a password longer\n          than 256 bytes. sshd compares this return value directly against the\n          shadow field, which is also \"*\", so authentication succeeds.\n\n          The exploit requires two password attempts on the same SSH connection:\n          the first (any short password) primes sshd's internal fake-salt cache\n          with a real $5$/$6$ hash from another account on the system, and the\n          second (>256 byte) password triggers the musl crypt() bypass.\n\n          All five conditions must be true:\n          1. OpenSSH built against musl (not glibc)\n          2. sshd built without PAM, or UsePAM no (Alpine default)\n          3. PasswordAuthentication yes (OpenSSH default)\n          4. Target account has \"*\" in /etc/shadow password field\n          5. At least one other account has a real $5$ or $6$ hash\n\n          musl has returned \"*\" on overlength passwords since 2012. sshd started\n          borrowing other accounts' salts in 2016. The bug is exploitable on\n          OpenSSH as far back as 7.5p1 (musl 1.1.16, 2017).\n\n          Fixed in OpenSSH 10.6p2 (2026-11-05).",
+  "references": [
+   "CVE-2026-123158",
+   "URL-https://github.com/oz9un/sshole",
+   "URL-https://sshhole.com"
+  ],
+  "platform": "Unix",
+  "arch": "cmd",
+  "rport": 22,
+  "autofilter_ports": [],
+  "autofilter_services": [],
+  "targets": [
+   "Unix Command"
+  ],
+  "mod_time": "2026-11-23 20:10:40 +0000",
+  "path": "/modules/exploits/linux/ssh/openssh_musl_crypt_bypass.rb",
+  "is_install_path": true,
+  "ref_name": "linux/ssh/openssh_musl_crypt_bypass",
+  "check": true,
+  "post_auth": true,
+  "default_credential": false,
+  "notes": {
+   "Stability": [
+    "crash-safe"
+   ],
+   "Reliability": [
+    "repeatable-session"
+   ],
+   "SideEffects": [
+    "ioc-in-logs"
+   ]
+  },
+  "session_types": false,
+  "needs_cleanup": null
+ },
+ "exploit_unix/ftp/vsftpd_234_backdoor": {
+  "name": "VSFTPD 2.3.4 Backdoor Command Execution",
+  "fullname": "exploit/unix/ftp/vsftpd_234_backdoor",
+  "aliases": [],
+  "rank": 600,
+  "disclosure_date": "2011-07-03",
+  "type": "exploit",
+  "author": [
+   "hdm <x@hdm.io>",
+   "MC <mc@metasploit.com>",
+   "g0tmi1k"
+  ],
+  "description": "This module exploits a malicious backdoor that was added to the VSFTPD download\n          archive. This backdoor was introduced into the vsftpd-2.3.4.tar.gz archive between\n          June 30th 2011 and July 1st 2011 according to the most recent information\n          available. This backdoor was removed on July 3rd 2011.",
+  "references": [
+   "CVE-2011-2523",
+   "OSVDB-73573",
+   "URL-http://pastebin.com/AetT9sS5",
+   "URL-http://scarybeastsecurity.blogspot.com/2011/07/alert-vsftpd-download-backdoored.html"
+  ],
+  "platform": "Linux,Unix",
+  "arch": "cmd",
+  "rport": 21,
+  "autofilter_ports": [],
+  "autofilter_services": [],
+  "targets": [
+   "Linux/Unix Command",
+   "Backdoor Command Shell"
+  ],
+  "mod_time": "2026-09-02 06:58:16 +0000",
+  "path": "/modules/exploits/unix/ftp/vsftpd_234_backdoor.rb",
+  "is_install_path": true,
+  "ref_name": "unix/ftp/vsftpd_234_backdoor",
+  "check": true,
+  "post_auth": false,
+  "default_credential": false,
+  "notes": {
+   "Reliability": [
+    "unknown-reliability"
+   ],
+   "Stability": [
+    "unknown-stability"
+   ],
+   "SideEffects": [
+    "unknown-side-effects"
+   ]
+  },
+  "session_types": false,
+  "needs_cleanup": null
+ },
+ "auxiliary_admin/2wire/xslt_password_reset": {
+  "name": "2Wire Cross-Site Request Forgery Password Reset Vulnerability",
+  "fullname": "auxiliary/admin/2wire/xslt_password_reset",
+  "aliases": [],
+  "rank": 300,
+  "disclosure_date": "2007-08-15",
+  "type": "auxiliary",
+  "author": [
+   "hkm <hkm@hakim.ws>",
+   "Travis Phillips"
+  ],
+  "description": "This module will reset the admin password on a 2Wire wireless router.  This is\n          done by using the /xslt page where authentication is not required, thus allowing\n          configuration changes (such as resetting the password) as administrators.",
+  "references": [
+   "CVE-2007-4387",
+   "OSVDB-37667",
+   "BID-36075",
+   "URL-https://seclists.org/bugtraq/2007/Aug/225"
+  ],
+  "platform": "",
+  "arch": "",
+  "rport": 80,
+  "autofilter_ports": [
+   80,
+   8080,
+   443,
+   8000,
+   8888,
+   8880,
+   8008,
+   3000,
+   8443
+  ],
+  "autofilter_services": [
+   "http",
+   "https"
+  ],
+  "targets": null,
+  "mod_time": "2025-05-21 08:32:40 +0000",
+  "path": "/modules/auxiliary/admin/2wire/xslt_password_reset.rb",
+  "is_install_path": true,
+  "ref_name": "admin/2wire/xslt_password_reset",
+  "check": false,
+  "post_auth": false,
+  "default_credential": false,
+  "notes": {
+   "Stability": [
+    "crash-safe"
+   ],
+   "SideEffects": [
+    "ioc-in-logs",
+    "config-changes"
+   ],
+   "Reliability": []
+  },
+  "session_types": false,
+  "needs_cleanup": false,
+  "actions": []
+ },
+ "auxiliary_admin/android/google_play_store_uxss_xframe_rce": {
+  "name": "Android Browser RCE Through Google Play Store XFO",
+  "fullname": "auxiliary/admin/android/google_play_store_uxss_xframe_rce",
+  "aliases": [],
+  "rank": 300,
+  "disclosure_date": null,
+  "type": "auxiliary",
+  "author": [
+   "Rafay Baloch",
+   "joev <joev@metasploit.com>"
+  ],
+  "description": "This module combines two vulnerabilities to achieve remote code\n          execution on affected Android devices. First, the module exploits\n          CVE-2014-6041, a Universal Cross-Site Scripting (UXSS) vulnerability present in\n          versions of Android's open source stock browser (the AOSP Browser) prior to\n          4.4. Second, the Google Play store's web interface fails to enforce a\n          X-Frame-Options: DENY header (XFO) on some error pages, and therefore, can be\n          targeted for script injection. As a result, this leads to remote code execution\n          through Google Play's remote installation feature, as any application available\n          on the Google Play store can be installed and launched on the user's device.\n\n          This module requires that the user is logged into Google with a vulnerable browser.\n\n          To list the activities in an APK, you can use `aapt dump badging /path/to/app.apk`.",
+  "references": [
+   "URL-http://web.archive.org/web/20230321034739/https://www.rapid7.com/blog/post/2014/09/15/major-android-bug-is-a-privacy-disaster-cve-2014-6041/",
+   "URL-https://web.archive.org/web/20150316151817/http://1337day.com/exploit/description/22581",
+   "OSVDB-110664",
+   "CVE-2014-6041"
+  ],
+  "platform": "",
+  "arch": "",
+  "rport": null,
+  "autofilter_ports": [],
+  "autofilter_services": [],
+  "targets": null,
+  "mod_time": "2026-03-11 21:31:08 +0000",
+  "path": "/modules/auxiliary/admin/android/google_play_store_uxss_xframe_rce.rb",
+  "is_install_path": true,
+  "ref_name": "admin/android/google_play_store_uxss_xframe_rce",
+  "check": false,
+  "post_auth": false,
+  "default_credential": false,
+  "notes": {
+   "Stability": [
+    "crash-safe"
+   ],
+   "SideEffects": [
+    "ioc-in-logs",
+    "artifacts-on-disk"
+   ],
+   "Reliability": []
+  },
+  "session_types": false,
+  "needs_cleanup": false,
+  "actions": [
+   {
+    "name": "WebServer",
+    "description": "Serve exploit via web server"
+   }
+  ]
+ }
+}

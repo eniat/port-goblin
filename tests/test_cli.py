@@ -21,6 +21,29 @@ def isolated(tmp_path, monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def offline_intel(monkeypatch):
+    """CLI tests never reach NVD, KEV, EPSS or endoflife.date."""
+    from portgoblin.analysis.versions import Sources, VersionIntel
+    from portgoblin.intelligence.cache import FetchError
+
+    def offline(*args, **kwargs):
+        raise FetchError("offline in tests")
+
+    class OfflineNvd:
+        has_key = False
+
+        def lookup(self, cpe):
+            raise FetchError("offline in tests")
+
+    def make(config, progress=None):
+        return VersionIntel(
+            Sources(nvd=OfflineNvd(), kev=offline, epss=offline, eol=offline), progress
+        )
+
+    monkeypatch.setattr(cli, "make_intel", make)
+
+
 @pytest.fixture
 def as_root(monkeypatch):
     monkeypatch.setattr(preflight, "is_root", lambda: True)
@@ -236,3 +259,23 @@ def test_scan_preflight_says_checks_will_run(as_root, no_engine):
     assert "Follow-up checks Yes (read-only" in plain(result.output)
     result = runner.invoke(cli.app, ["scan", "10.0.0.1", "--internal", "--no-checks"], input="n\n")
     assert "Follow-up checks No (--no-checks)" in plain(result.output)
+
+
+def test_import_reports_intel_not_assessed_when_offline(monkeypatch):
+    result = runner.invoke(
+        cli.app,
+        ["import", str(NMAP_FIXTURES / "services_mixed.xml"), "--no-checks", "--no-color"],
+    )
+    assert result.exit_code == 0, result.output
+    out = plain(result.output)
+    assert "Vulnerable versions 0 services" in out
+    assert "NVD not reachable (offline in tests)" in out
+    assert "CVE check not possible: no version detected" in out
+
+
+def test_no_intel_flag(monkeypatch):
+    result = runner.invoke(
+        cli.app,
+        ["import", str(NMAP_FIXTURES / "udp.xml"), "--no-checks", "--no-intel", "--no-color"],
+    )
+    assert "Vulnerable versions" not in result.output

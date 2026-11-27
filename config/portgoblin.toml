@@ -53,3 +53,18 @@ confirmed_non_safe = ["ssl-enum-ciphers"]
 default = 60
 reachability = 3
 http = 10
+
+[intelligence]
+# Hours before cached NVD, KEV, EPSS and endoflife.date answers are fetched again.
+cache_ttl_hours = 24
+request_timeout = 30
+# Seconds between NVD requests: NVD allows 5 requests per 30 s without NVD_API_KEY, 50 with it.
+nvd_delay_no_key = 6.0
+nvd_delay_with_key = 0.6
+# CVEs listed per service (all are listed with --verbose).
+max_cves_shown = 10
+
+[intelligence.eol_aliases]
+# nmap CPE vendor:product to endoflife.date product, where endoflife.date has no matching CPE.
+"igor_sysoev:nginx" = "nginx"
+"samba:samba" = "samba"
