@@ -2,46 +2,104 @@
 
 Knocking on every door.
 
-By Taine ([github.com/eniat](https://github.com/eniat)). MIT licence.
+By Taine ([github.com/eniat](https://github.com/eniat)). MIT licence. Source: [github.com/eniat/port-goblin](https://github.com/eniat/port-goblin).
 
 ## Install on Kali
 
 - External tools (nmap is required, the rest are used when present):
 
 ```bash
-sudo apt install nmap exploitdb metasploit-framework netexec smbclient
+sudo apt install nmap exploitdb metasploit-framework netexec smbclient pipx
 ```
 
-- PortGoblin itself (Python 3.11 or later):
+- PortGoblin itself (Python 3.11 or later), straight from GitHub:
 
 ```bash
-pipx install ./PortGoblin
+pipx install git+https://github.com/eniat/port-goblin.git
 ```
 
-- Scanning needs root for `-sS` and `-sU`. pipx installs to `~/.local/bin`, which is not on sudo's path, so call it by full path:
+- Or clone it first, to read the code or change the config:
 
 ```bash
-sudo "$(command -v portgoblin)" scan 10.0.0.0/24 --internal
+git clone https://github.com/eniat/port-goblin.git
+```
+
+```bash
+pipx install ./port-goblin
+```
+
+- pipx puts `portgoblin` in `~/.local/bin`. If the shell cannot find it, run `pipx ensurepath` and open a new terminal.
+- Update to the latest version on GitHub:
+
+```bash
+pipx upgrade portgoblin
+```
+
+- Remove it:
+
+```bash
+pipx uninstall portgoblin
+```
+
+- Scanning needs root for `-sS` and `-sU`. `~/.local/bin` is not on sudo's path, so call it by full path:
+
+```bash
+sudo "$(command -v portgoblin)" scan 10.0.0.5 --internal
 ```
 
 - sudo drops most environment variables. To pass an NVD API key through:
 
 ```bash
-sudo --preserve-env=NVD_API_KEY "$(command -v portgoblin)" scan 10.0.0.0/24 --internal
+sudo --preserve-env=NVD_API_KEY "$(command -v portgoblin)" scan 10.0.0.5 --internal
 ```
 
 - Run state lives in `~/.local/share/portgoblin/runs/` and the cache in `~/.cache/portgoblin/` (or `$XDG_DATA_HOME` and `$XDG_CACHE_HOME`). Under sudo these follow `$HOME` as sudo sets it; `sudo sh -c 'echo $HOME'` shows where.
-- Check the set-up:
+- Tested with nmap 7.94SVN, netexec 1.5.1, smbclient 4.19.5, Python 3.11 and 3.13. Built and tested on Ubuntu 24.04, not on Kali itself.
+
+## Quick start
+
+1. Check the tools, root and the NVD key:
 
 ```bash
 portgoblin doctor
 ```
 
-- Tested with nmap 7.94SVN, netexec 1.5.1, smbclient 4.19.5, Python 3.11 and 3.13. Built and tested on Ubuntu 24.04, not on Kali itself.
+2. Fetch the KEV feed and endoflife.date data, and update Exploit-DB:
+
+```bash
+portgoblin update
+```
+
+3. Scan. Pre-flight shows exactly what will be scanned and asks `Proceed? [y/N]` before any traffic:
+
+```bash
+sudo "$(command -v portgoblin)" scan 10.0.0.5 --internal
+```
+
+4. Read the report: quick wins first, each with what was seen, why it matters, the fix and the command to reproduce it. Then vulnerable versions, the hosts table and copy-ready service lists.
+5. Keep a copy for the write-up with `--save results.txt`, and the raw nmap files with `--keep-raw ./evidence`.
+6. If you press Ctrl+C, the results so far are printed. Carry on later:
+
+```bash
+portgoblin runs
+```
+
+```bash
+sudo "$(command -v portgoblin)" resume <run-id>
+```
+
+7. Already have nmap XML from another scan? Skip scanning:
+
+```bash
+portgoblin import tcp.xml udp.xml
+```
 
 ## Usage
 
 ```bash
+portgoblin scan 10.0.0.5 --internal
+portgoblin scan 10.0.0.5 10.0.0.9 10.0.0.20 --internal
+portgoblin scan app.example.com --external
 portgoblin scan 10.0.0.0/24 --internal
 portgoblin scan -f targets.txt --external --exclude-file exclude.txt
 portgoblin scan 203.0.113.0/28 --external --tcp-only
@@ -56,6 +114,14 @@ portgoblin doctor
 portgoblin update
 portgoblin --version
 ```
+
+`scan` and `resume` need root (see Install). Run them with sudo as shown above.
+
+### Single hosts
+
+- One IP or hostname is a normal target: `portgoblin scan 10.0.0.5 --internal`. Several can be listed, comma or space separated.
+- With `--internal`, host discovery runs first. A host that answers none of its probes (ping, timestamp, TCP SYN to common ports, TCP ACK to 80 and 443) is treated as down and not scanned further. On the local subnet nmap uses ARP instead, which almost every host answers. If you know the host is up but it filters those probes, use `--external`: it skips discovery (`-Pn`) and scans it anyway, at the lower external rate unless `--rate` is given.
+- A full TCP scan of one host takes at most about 65,535 ÷ 300 seconds (under 4 minutes) internally, before service detection and UDP.
 
 ### Options
 
@@ -284,7 +350,13 @@ Every follow-up script is checked against nmap's `script.db` before it runs (ser
 
 ## Configuration
 
-PortGoblin reads the first of `--config`, `$PORTGOBLIN_CONFIG`, `~/.config/portgoblin/portgoblin.toml` and the repository's `config/portgoblin.toml`, or uses built-in defaults that match that file. Unknown keys are refused.
+PortGoblin reads the first of `--config`, `$PORTGOBLIN_CONFIG`, `~/.config/portgoblin/portgoblin.toml` and, when run from a clone, the repository's `config/portgoblin.toml`. Otherwise it uses built-in defaults, which match that file. A pipx install from GitHub uses the defaults. To change them, copy the file and edit it:
+
+```bash
+mkdir -p ~/.config/portgoblin && curl -o ~/.config/portgoblin/portgoblin.toml https://raw.githubusercontent.com/eniat/port-goblin/main/config/portgoblin.toml
+```
+
+Unknown keys are refused.
 
 - `[rates]` `internal`, `external`: `--min-rate` per mode.
 - `[scan]`:
@@ -325,10 +397,13 @@ Drop a file into `portgoblin/checks/`. The engine does not need editing.
 ## Development
 
 ```bash
+git clone https://github.com/eniat/port-goblin.git && cd port-goblin
 python3 -m venv .venv && . .venv/bin/activate
 pip install -e '.[dev]'
 ruff check . && black --check . && pytest
 ```
+
+- The GitHub Actions workflow in `.github/workflows/ci.yml` runs the same checks on Python 3.11, 3.12 and 3.13 for every push and pull request.
 
 - Tests use saved fixtures and never touch the network or run nmap against anything but the test's own fake runner.
 - `tests/fixtures/checks/` holds real output from FTP, SSH, Samba, SNMP, Redis, LDAP, rsync, VNC, X11 and TLS servers, each in an insecure and a hardened configuration, plus real netexec 1.5.1 and smbclient output.

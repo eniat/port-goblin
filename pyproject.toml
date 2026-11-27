@@ -25,7 +25,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/eniat"
+Homepage = "https://github.com/eniat/port-goblin"
+Repository = "https://github.com/eniat/port-goblin"
+Issues = "https://github.com/eniat/port-goblin/issues"
 
 [project.scripts]
 portgoblin = "portgoblin.cli:app"
