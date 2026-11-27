@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:33:16 2026 as: nmap -sS -p 1-60 -&#45;scan-delay 50ms -&#45;max-retries 0 -&#45;max-hostgroup 1 -oA tr 127.0.0.1-6 -->
+<nmaprun scanner="nmap" args="nmap -sS -p 1-60 -&#45;scan-delay 50ms -&#45;max-retries 0 -&#45;max-hostgroup 1 -oA tr 127.0.0.1-6" start="1795782796" startstr="Fri Nov 27 12:33:16 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="60" services="1-60"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795782796" endtime="1795782799"><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><extraports state="closed" count="60">
+<extrareasons reason="reset" count="60" proto="tcp" ports="1-60"/>
+</extraports>
+</ports>
+<times srtt="44" rttvar="5" to="100000"/>
+</host>
+<host starttime="1795782799" endtime="1795782802"><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.2" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><extraports state="closed" count="60">
+<extrareasons reason="reset" count="60" proto="tcp" ports="1-60"/>
+</extraports>
+</ports>
+<times srtt="45" rttvar="7" to="100000"/>
+</host>

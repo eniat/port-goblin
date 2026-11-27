@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<?xml-stylesheet href="/usr/share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Hand-written fixture in the nmap 5.21 XML format (xmloutputversion 1.03: no CPE, no reason_ttl, no hosthint). -->
+<nmaprun scanner="nmap" args="nmap -sV -oX old.xml 192.168.1.10" start="1300000000" startstr="Sun Mar 13 07:06:40 2011" version="5.21" xmloutputversion="1.03">
+<scaninfo type="syn" protocol="tcp" numservices="1000" services="1-1000" />
+<verbose level="0" />
+<debugging level="0" />
+<host starttime="1300000000" endtime="1300000020"><status state="up" reason="arp-response"/>
+<address addr="192.168.1.10" addrtype="ipv4" />
+<address addr="AA:BB:CC:DD:EE:FF" addrtype="mac" />
+<hostnames><hostname name="oldbox.lan" type="PTR" /></hostnames>
+<ports><extraports state="closed" count="997">
+<extrareasons reason="resets" count="997"/>
+</extraports>
+<port protocol="tcp" portid="21"><state state="open" reason="syn-ack"/><service name="ftp" product="vsftpd" version="2.3.4" ostype="Unix" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="23"><state state="open" reason="syn-ack"/><service name="telnet" product="Linux telnetd" ostype="Linux" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack"/><service name="http" product="Apache httpd" version="2.2.8" extrainfo="(Ubuntu) DAV/2" method="probed" conf="10" /></port>
+</ports>
+<times srtt="355" rttvar="122" to="100000" />
+</host>
+<runstats><finished time="1300000020" timestr="Sun Mar 13 07:07:00 2011" elapsed="20.00"/><hosts up="1" down="0" total="1" />
+</runstats>
+</nmaprun>

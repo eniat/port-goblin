@@ -1,0 +1,55 @@
+# PortGoblin defaults. Copy to ~/.config/portgoblin/portgoblin.toml to override,
+# or point PORTGOBLIN_CONFIG at another file.
+
+[rates]
+# nmap --min-rate for the full TCP scan (Cautious profile). --rate overrides both.
+internal = 300
+external = 100
+
+[scan]
+# Targets are split into chunks of this prefix length (24 means one /24 per chunk).
+chunk_prefix = 24
+# Number of top UDP ports (--top-udp overrides).
+top_udp = 200
+# Run the UDP scan alongside the TCP phases (true) or after them (false).
+udp_parallel = true
+stats_every = "30s"
+# Refuse target sets larger than this many addresses.
+max_hosts = 65536
+# Seconds to wait for nmap to stop after Ctrl+C before it is killed.
+interrupt_grace_seconds = 30
+
+[nse]
+# The only NSE scripts follow-up checks may run.
+allowlist = [
+    "ftp-anon",
+    "ssh2-enum-algos",
+    "smb2-security-mode",
+    "smb-security-mode",
+    "smb-protocols",
+    "rdp-enum-encryption",
+    "rdp-ntlm-info",
+    "snmp-info",
+    "snmp-sysdescr",
+    "nfs-showmount",
+    "ldap-rootdse",
+    "ldap-search",
+    "redis-info",
+    "mongodb-info",
+    "mongodb-databases",
+    "rsync-list-modules",
+    "vnc-info",
+    "x11-access",
+    "ipmi-version",
+    "ipmi-cipher-zero",
+    "ssl-cert",
+    "ssl-enum-ciphers",
+]
+# Allowlisted scripts outside the safe category, confirmed by the tester.
+confirmed_non_safe = ["ssl-enum-ciphers"]
+
+[timeouts]
+# Seconds per follow-up check.
+default = 60
+reachability = 3
+http = 10

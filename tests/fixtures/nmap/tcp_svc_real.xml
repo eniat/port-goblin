@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Fri Nov 27 12:16:43 2026 as: nmap -sS -sV -&#45;script &quot;default and not (brute or dos or exploit or intrusive)&quot; -p 8080,8443 -T3 -oA tcp_svc 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -sS -sV -&#45;script &quot;default and not (brute or dos or exploit or intrusive)&quot; -p 8080,8443 -T3 -oA tcp_svc 127.0.0.1" start="1795781803" startstr="Fri Nov 27 12:16:43 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="2" services="8080,8443"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795781803" endtime="1795781818"><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="8080"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="http" product="SimpleHTTPServer" version="0.6" extrainfo="Python 3.13.18" method="probed" conf="10"><cpe>cpe:/a:python:simplehttpserver:0.6</cpe></service><script id="http-server-header" output="SimpleHTTP/0.6 Python/3.13.18"><elem>SimpleHTTP/0.6 Python/3.13.18</elem>
+</script><script id="http-title" output="Directory listing for /"><elem key="title">Directory listing for /</elem>
+</script></port>
+<port protocol="tcp" portid="8443"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="http" product="SimpleHTTPServer" version="0.6" extrainfo="Python 3.13.18" tunnel="ssl" method="probed" conf="10"><cpe>cpe:/a:python:simplehttpserver:0.6</cpe></service><script id="http-server-header" output="SimpleHTTP/0.6 Python/3.13.18"><elem>SimpleHTTP/0.6 Python/3.13.18</elem>
+</script><script id="ssl-cert" output="Subject: commonName=fixture.local&#xa;Not valid before: 2026-11-27T12:16:42&#xa;Not valid after:  2026-12-27T12:16:42"><table key="subject">
+<elem key="commonName">fixture.local</elem>
+</table>
+<table key="issuer">
+<elem key="commonName">fixture.local</elem>
+</table>
+<table key="pubkey">
+<elem key="type">rsa</elem>
+<elem key="bits">2048</elem>
+<elem key="modulus">CF3E802C9CA5B82C60EB8660A68BB95B3762E13B52862DCEF6973DF6C9152BB15607B18A95EDD01F4A251E737A2B8C06B41AE32E0A28DB8FA17E0545CA990A9EC511ADC5BCCB2817BFB178AB62D91DE1D39029215BDA1B2DADF58D1F2B6481A0B98E318D7B46CB2E48580978579095CB76695B3AE434C34A3F2BFEB441BAA739769D0E5EA7BA17CE824420016069EBCC5FBF28B09568E27B068E5884FDCFDC8873C8523103495C8A7109E0EDEF81241AA1C5700EA361949AA5BFD0120053E3DBA7A4DC6001E423543A0A99D6F422B9580780DB793821E0EA19272A8159C95ACA8A0BBF942D7B2BE942DF8CDC05E7567C34B65CE1BFD63A160905D49653ADDA19</elem>
+<elem key="exponent">65537</elem>
+</table>
+<table key="extensions">
+<table>
+<elem key="name">X509v3 Subject Key Identifier</elem>
+<elem key="value">A9:34:79:82:73:77:F0:D5:82:FE:46:78:AC:F3:46:7C:E7:01:6E:FE</elem>
+</table>
+<table>
+<elem key="name">X509v3 Authority Key Identifier</elem>
+<elem key="value">A9:34:79:82:73:77:F0:D5:82:FE:46:78:AC:F3:46:7C:E7:01:6E:FE</elem>
+</table>
+<table>
+<elem key="name">X509v3 Basic Constraints</elem>
+<elem key="value">CA:TRUE</elem>
+<elem key="critical">true</elem>
+</table>
+</table>
+<elem key="sig_algo">sha256WithRSAEncryption</elem>
+<table key="validity">
+<elem key="notBefore">2026-11-27T12:16:42</elem>
+<elem key="notAfter">2026-12-27T12:16:42</elem>
+</table>
+<elem key="md5">bf0ee5913411d1247d2b998894bc35c7</elem>
+<elem key="sha1">6de694dd4aecac2d9c7bacc1d0e0bf09619962a2</elem>
+<elem key="pem">-&#45;&#45;&#45;&#45;BEGIN CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;MIIDETCCAfmgAwIBAgIUWkLSL1/iljqS9JHyyln9a6/LhtwwDQYJKoZIhvcNAQEL&#xa;BQAwGDEWMBQGA1UEAwwNZml4dHVyZS5sb2NhbDAeFw0yNjExMjcxMjE2NDJaFw0y&#xa;NjEyMjcxMjE2NDJaMBgxFjAUBgNVBAMMDWZpeHR1cmUubG9jYWwwggEiMA0GCSqG&#xa;SIb3DQEBAQUAA4IBDwAwggEKAoIBAQDPPoAsnKW4LGDrhmCmi7lbN2LhO1KGLc72&#xa;lz32yRUrsVYHsYqV7dAfSiUec3orjAa0GuMuCijbj6F+BUXKmQqexRGtxbzLKBe/&#xa;sXirYtkd4dOQKSFb2hstrfWNHytkgaC5jjGNe0bLLkhYCXhXkJXLdmlbOuQ0w0o/&#xa;K/60QbqnOXadDl6nuhfOgkQgAWBp68xfvyiwlWjiewaOWIT9z9yIc8hSMQNJXIpx&#xa;CeDt74EkGqHFcA6jYZSapb/QEgBT49unpNxgAeQjVDoKmdb0IrlYB4DbeTgh4OoZ&#xa;JyqBWclayooLv5QteyvpQt+M3AXnVnw0tlzhv9Y6FgkF1JZTrdoZAgMBAAGjUzBR&#xa;MB0GA1UdDgQWBBSpNHmCc3fw1YL+Rnis80Z85wFu/jAfBgNVHSMEGDAWgBSpNHmC&#xa;c3fw1YL+Rnis80Z85wFu/jAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUA&#xa;A4IBAQCxJXEAuIXxPoy0vXkpmuPrBs5AmU0oMAOW3uEGTpN+zZuKv/vfgsvdNTZS&#xa;xZRG90PbKWK55FnDcoanmSgKer2tonWqoUshq1U2ZhESlkHpazBgVjQYDHbo3nbU&#xa;hQnvAKxYobPaQgwRyY5VmRm8AUTcYrjHCmaRQEJ1DIIju3hKwk1+6weOPqSfiLS8&#xa;c2AU56mULiSf4/YE7YSsMhgMCMMDkLsZ5VRRW1ee4z0bgx8JCwVh8SAJrh1sb01h&#xa;3Kd4uvNWDf+iVm8QyFQHDTogmLanrgNHXTPfVp4EL67MzFIi0s1FXJGBCaZB6ltW&#xa;ANqw8d47OdP6p4uotuuPnK3jtpCO&#xa;-&#45;&#45;&#45;&#45;END CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;</elem>
+</script><script id="ssl-date" output="TLS randomness does not represent time"></script><script id="http-title" output="Directory listing for /"><elem key="title">Directory listing for /</elem>
+</script></port>
+</ports>
+<times srtt="73" rttvar="3769" to="100000"/>
+</host>
+<runstats><finished time="1795781818" timestr="Fri Nov 27 12:16:58 2026" summary="Nmap done at Fri Nov 27 12:16:58 2026; 1 IP address (1 host up) scanned in 15.68 seconds" elapsed="15.68" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>
