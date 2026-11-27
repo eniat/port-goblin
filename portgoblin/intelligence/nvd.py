@@ -166,7 +166,6 @@ class NvdClient:
         self.fetch = fetch
         self.sleep = sleep
         self._last = 0.0
-        self.requests = 0
 
     @property
     def has_key(self) -> bool:
@@ -179,7 +178,6 @@ class NvdClient:
             if self._last and wait > 0:
                 self.sleep(wait)
             self._last = time.monotonic()
-            self.requests += 1
             try:
                 return self.fetch(url, self.timeout, headers)
             except FetchError as exc:

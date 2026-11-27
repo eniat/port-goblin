@@ -392,3 +392,36 @@ def test_nvd_offline_stops_and_reports(tmp_path):
     # Without NVD there are no CVEs; Exploit-DB title matches still show as possible matches.
     assert all(not r.cves for r in result.rows)
     assert result.rows[0].possible_exploits
+
+
+def test_eol_uses_vendor_nvd_mapped_to(tmp_path):
+    """Live nmap -sV reports Redis only as redislabs:redis; endoflife.date lists redis:redis."""
+    port = Port(
+        protocol="tcp",
+        portid=6379,
+        state="open",
+        service=Service(
+            name="redis",
+            product="Redis key-value store",
+            version="7.0.15",
+            cpes=["cpe:/a:redislabs:redis:7.0.15"],
+        ),
+    )
+    host = Host(address="127.0.0.1", status="up", status_reason="syn-ack", ports=[port])
+
+    class MappedNvd:
+        def lookup(self, cpe):
+            from portgoblin.intelligence.nvd import CpeResult
+
+            return CpeResult(
+                cpe=cpe,
+                queried="cpe:2.3:a:redis:redis:7.0.15:*:*:*:*:*:*:*",
+                note="NVD lists this product under vendor redis, not redislabs",
+            )
+
+    src = sources(tmp_path)
+    src.nvd = MappedNvd()
+    result = asyncio.run(VersionIntel(src).run(ScanResult(hosts={host.address: host})))
+    (row,) = result.rows
+    assert row.eol.startswith("Redis 7.0 ended 2024-07-29")
+    assert any(f.finding_id == "EOL-001" for f in result.findings)

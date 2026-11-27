@@ -21,12 +21,11 @@ from portgoblin.checks.base import (
     ScriptCheck,
     ScriptResults,
     ToolResult,
-    hp,
 )
 from portgoblin.core import preflight
 from portgoblin.core.config import Config
 from portgoblin.core.engine import NullReporter, Reporter, Runner
-from portgoblin.core.models import CheckRecord, Finding, Host, Port, ScanResult, Status
+from portgoblin.core.models import CheckRecord, Finding, Host, Port, ScanResult
 from portgoblin.core.nmap_parser import NmapParseError, parse_file
 from portgoblin.core.nmap_runner import ScriptNotAllowedError, script_cmd
 
@@ -364,18 +363,3 @@ class FollowUps:
             )
         )
         return None
-
-
-def summarise_not_reachable(hosts: list[Host]) -> Finding:
-    return Finding(
-        finding_id="NA-reachability",
-        check="follow-up",
-        title="Follow-up checks",
-        status=Status.NOT_ASSESSED,
-        hosts=[h.address for h in hosts],
-        observed="Not assessed: hosts not reachable from this machine",
-        why_it_matters="The imported hosts did not answer a TCP connect, so no checks ran.",
-    )
-
-
-__all__ = ["FollowUpContext", "FollowUps", "hp", "http_get_sync", "strip_ansi"]

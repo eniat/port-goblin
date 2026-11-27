@@ -167,11 +167,18 @@ class VersionIntel:
                         )
                     )
                 if eol and row.eol is None:
+                    # Try nmap's CPE and the vendor NVD mapped it to (nmap reports Redis as
+                    # redislabs:redis, endoflife.date lists redis:redis).
                     version = cpe_version(cpe) or ""
-                    status = eol.check(cpe, version, self.sources.today)
-                    if status and status.is_eol:
-                        ended = status.eol_from or "(date unknown)"
-                        row.eol = f"{status.label} {status.cycle} ended {ended} ({status.link})"
+                    for candidate in dict.fromkeys([cpe, lookup.queried]):
+                        status = eol.check(candidate, version, self.sources.today)
+                        if status:
+                            if status.is_eol:
+                                ended = status.eol_from or "(date unknown)"
+                                row.eol = (
+                                    f"{status.label} {status.cycle} ended {ended} ({status.link})"
+                                )
+                            break
             confirmed = {e.split(" ", 1)[0] for c in row.cves for e in c.exploits}
             row.possible_exploits = [
                 f"{e.edb_id} {e.title}"

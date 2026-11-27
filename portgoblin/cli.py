@@ -78,7 +78,10 @@ def main(
         False, "--version", callback=_version_callback, is_eager=True, help="Show the version."
     ),
     config: Path | None = typer.Option(
-        None, "--config", help="Config file (default: PORTGOBLIN_CONFIG, then the usual paths)."
+        None,
+        "--config",
+        metavar="FILE",
+        help="Config file (default: PORTGOBLIN_CONFIG, then the usual paths).",
     ),
 ) -> None:
     STATE.config_path = config
@@ -265,24 +268,51 @@ def _execute(console: Console, engine: Engine, save: Path | None, verbose: bool)
 @app.command()
 def scan(
     targets: list[str] | None = typer.Argument(
-        None, help="IPs, CIDRs, ranges (10.0.0.1-50) or hostnames."
+        None, metavar="TARGET", help="IPs, CIDRs, ranges (10.0.0.1-50) or hostnames."
     ),
-    target_file: Path | None = typer.Option(None, "-f", "--file", help="File of targets."),
-    exclude: list[str] | None = typer.Option(None, "--exclude", help="Targets to exclude."),
-    exclude_file: Path | None = typer.Option(None, "--exclude-file", help="File of exclusions."),
+    target_file: Path | None = typer.Option(
+        None, "-f", "--file", metavar="FILE", help="File of targets, one or more per line."
+    ),
+    exclude: list[str] | None = typer.Option(
+        None,
+        "--exclude",
+        metavar="TARGETS",
+        help="Targets to exclude (comma-separated, repeatable).",
+    ),
+    exclude_file: Path | None = typer.Option(
+        None, "--exclude-file", metavar="FILE", help="File of targets to exclude."
+    ),
     internal: bool = typer.Option(False, "--internal", help="Internal test (host discovery)."),
     external: bool = typer.Option(False, "--external", help="External test (-Pn, no discovery)."),
     tcp_only: bool = typer.Option(False, "--tcp-only", help="Skip the UDP scan."),
     udp_only: bool = typer.Option(False, "--udp-only", help="Skip the TCP scans."),
-    top_udp: int | None = typer.Option(None, "--top-udp", min=1, max=65535, help="UDP ports."),
-    rate: int | None = typer.Option(None, "--rate", min=1, help="nmap --min-rate for TCP."),
+    top_udp: int | None = typer.Option(
+        None,
+        "--top-udp",
+        min=1,
+        max=65535,
+        metavar="N",
+        help="Top UDP ports to scan (default 200).",
+    ),
+    rate: int | None = typer.Option(
+        None,
+        "--rate",
+        min=1,
+        metavar="PPS",
+        help="nmap --min-rate for the full TCP scan (default 300 internal, 100 external).",
+    ),
     no_checks: bool = typer.Option(False, "--no-checks", help="Skip follow-up checks."),
     no_intel: bool = typer.Option(
         False, "--no-intel", help="Skip version intelligence (NVD, KEV, EPSS, Exploit-DB)."
     ),
-    save: Path | None = typer.Option(None, "--save", help="Also write the output as plain text."),
+    save: Path | None = typer.Option(
+        None, "--save", metavar="FILE", help="Also write the output as plain text."
+    ),
     keep_raw: Path | None = typer.Option(
-        None, "--keep-raw", help="Copy raw nmap files to this folder before clean-up."
+        None,
+        "--keep-raw",
+        metavar="DIR",
+        help="Copy raw nmap files to this folder before clean-up.",
     ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the Proceed? prompt."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show every port per host."),
@@ -350,7 +380,7 @@ def scan(
 
 @app.command()
 def resume(
-    run_id: str = typer.Argument(..., help="Run ID from portgoblin runs."),
+    run_id: str = typer.Argument(..., metavar="RUN_ID", help="Run ID from portgoblin runs."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the Proceed? prompt."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show every port per host."),
     no_color: bool = typer.Option(False, "--no-color", help="Plain output with no colour."),
@@ -383,13 +413,19 @@ def resume(
 
 @app.command("import")
 def import_(
-    files: list[Path] = typer.Argument(..., help="nmap XML files (TCP, UDP or both)."),
+    files: list[Path] = typer.Argument(
+        ..., metavar="XML", help="nmap XML files (TCP, UDP or both)."
+    ),
     no_checks: bool = typer.Option(False, "--no-checks", help="Skip follow-up checks."),
     no_intel: bool = typer.Option(
         False, "--no-intel", help="Skip version intelligence (NVD, KEV, EPSS, Exploit-DB)."
     ),
-    save: Path | None = typer.Option(None, "--save", help="Also write the output as plain text."),
-    yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask questions."),
+    save: Path | None = typer.Option(
+        None, "--save", metavar="FILE", help="Also write the output as plain text."
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip the Proceed? prompt before follow-up checks."
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show every port per host."),
     no_color: bool = typer.Option(False, "--no-color", help="Plain output with no colour."),
 ) -> None:
